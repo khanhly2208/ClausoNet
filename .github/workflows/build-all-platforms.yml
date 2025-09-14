@@ -60,13 +60,12 @@ jobs:
         pip list | findstr -i "pyinstaller customtkinter selenium"
         
     - name: 🏗️ Build Main Application (Windows EXE)
-      working-directory: ClausoNet4.0
       run: |
         echo "Building ClausoNet 4.0 Pro for Windows..."
         python build_fixed_exe.py
         
     - name: 🔧 Build Admin Tools (Windows EXE)
-      working-directory: ClausoNet4.0/admin_tools
+      working-directory: admin_tools
       run: |
         echo "Building Admin Key Generator for Windows..."
         python build_admin_key_exe.py
@@ -74,23 +73,23 @@ jobs:
     - name: 📋 List build outputs
       run: |
         echo "=== Main Application Build ==="
-        dir ClausoNet4.0\dist
+        dir dist
         echo "=== Admin Tools Build ==="
-        dir ClausoNet4.0\admin_tools\admin_key_package
+        dir admin_tools\admin_key_package
         
     - name: 📦 Package Windows builds
       run: |
         mkdir windows-release
         
         # Copy main application
-        if (Test-Path "ClausoNet4.0\dist\ClausoNet4.0Pro.exe") {
-          Copy-Item "ClausoNet4.0\dist\ClausoNet4.0Pro.exe" "windows-release\"
+        if (Test-Path "dist\ClausoNet4.0Pro.exe") {
+          Copy-Item "dist\ClausoNet4.0Pro.exe" "windows-release\"
           echo "✅ Main app copied"
         }
         
         # Copy admin tools
-        if (Test-Path "ClausoNet4.0\admin_tools\admin_key_package") {
-          Copy-Item -Recurse "ClausoNet4.0\admin_tools\admin_key_package" "windows-release\admin_tools"
+        if (Test-Path "admin_tools\admin_key_package") {
+          Copy-Item -Recurse "admin_tools\admin_key_package" "windows-release\admin_tools"
           echo "✅ Admin tools copied"
         }
         
@@ -154,7 +153,6 @@ jobs:
         pip3 list | grep -E "(pyinstaller|customtkinter|selenium)"
         
     - name: 🎨 Prepare assets for macOS
-      working-directory: ClausoNet4.0
       run: |
         # Create assets directory if not exists
         mkdir -p assets
@@ -166,19 +164,17 @@ jobs:
         fi
         
     - name: 🏗️ Build Main Application (macOS .app)
-      working-directory: ClausoNet4.0
       run: |
         echo "🍎 Building ClausoNet 4.0 Pro for macOS..."
         python3 build_main_macos.py
         
     - name: 🔧 Build Admin Tools (macOS .app)
-      working-directory: ClausoNet4.0/admin_tools
+      working-directory: admin_tools
       run: |
         echo "🔧 Building Admin Key Generator for macOS..."
         python3 build_admin_key_macos.py
         
     - name: 💿 Create DMG files
-      working-directory: ClausoNet4.0
       run: |
         echo "💿 Creating DMG files for distribution..."
         
@@ -203,7 +199,6 @@ jobs:
         fi
         
     - name: 📋 List build outputs
-      working-directory: ClausoNet4.0
       run: |
         echo "=== Main Application Build ==="
         ls -la dist/ || echo "No dist directory"
@@ -213,26 +208,25 @@ jobs:
         ls -la *.dmg || echo "No DMG files"
         
     - name: 📦 Package macOS builds
-      working-directory: ClausoNet4.0
       run: |
-        mkdir -p ../macos-release
+        mkdir -p macos-release
         
         # Copy .app bundles
         if [ -d "dist/ClausoNet 4.0 Pro.app" ]; then
-          cp -r "dist/ClausoNet 4.0 Pro.app" ../macos-release/
+          cp -r "dist/ClausoNet 4.0 Pro.app" macos-release/
           echo "✅ Main app copied"
         fi
         
         if [ -d "admin_tools/admin_key_package_macos" ]; then
-          cp -r "admin_tools/admin_key_package_macos" ../macos-release/admin_tools
+          cp -r "admin_tools/admin_key_package_macos" macos-release/admin_tools
           echo "✅ Admin tools copied"
         fi
         
         # Copy DMG files
-        cp *.dmg ../macos-release/ 2>/dev/null || echo "⚠️ No DMG files to copy"
+        cp *.dmg macos-release/ 2>/dev/null || echo "⚠️ No DMG files to copy"
         
         # Create installation guide
-        cat > ../macos-release/INSTALLATION_GUIDE.txt << 'EOF'
+        cat > macos-release/INSTALLATION_GUIDE.txt << 'EOF'
         # ClausoNet 4.0 Pro - macOS Installation Guide
         
         ## Quick Installation:
