@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "created": "2025-09-14T10:26:47.836582",
+    "version": "1.0",
+    "total_keys": 4,
+    "last_updated": "2025-09-14T10:42:42.777342"
+  },
+  "keys": {
+    "CNPRO-20250917-ZH7RQ-AFJCU": {
+      "created_date": "2025-09-14T10:32:49.343981",
+      "expiry_date": "2025-09-17T10:32:49.328358",
+      "duration_days": 3,
+      "customer_name": "Trial User",
+      "notes": "3-day trial key (Quick Generate)",
+      "status": "generated"
+    },
+    "CNPRO-22990629-T5YVL-EEWT8": {
+      "created_date": "2025-09-14T10:36:18.918361",
+      "expiry_date": "2299-06-29T10:36:18.918361",
+      "duration_days": 99999,
+      "customer_name": "",
+      "notes": "",
+      "status": "generated"
+    },
+    "CNPRO-22990629-J6DX8-HEK7R": {
+      "created_date": "2025-09-14T10:38:19.775679",
+      "expiry_date": "2299-06-29T10:38:19.775679",
+      "duration_days": 99999,
+      "customer_name": "",
+      "notes": "",
+      "status": "generated"
+    },
+    "CNPRO-20260914-NXR2H-DERQJ": {
+      "created_date": "2025-09-14T10:42:42.777342",
+      "expiry_date": "2026-09-14T10:42:42.777342",
+      "duration_days": 365,
+      "customer_name": "",
+      "notes": "",
+      "status": "generated"
+    }
+  }
+}

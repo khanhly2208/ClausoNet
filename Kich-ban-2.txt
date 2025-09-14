@@ -1,0 +1,27 @@
+Tiêu đề tiếng Anh:
+
+The Brave Dog and the Grateful Cats
+
+Nội dung tiếng Anh (dùng cho Tool):
+
+Two cats, a mother and her kitten, are walking together in a lively city park. The atmosphere is bright and cheerful, full of trees, benches, and playful details of nature. Suddenly, the ground shakes and a sinkhole opens, causing the kitten to fall into the hole. The mother cat stays on the surface, crying out desperately for help. A kind-hearted dog notices the scene, approaches with curiosity, and quickly understands the danger. With determination, the dog lowers a rope into the hole, allowing the kitten to climb back up. The mother cat embraces her kitten in relief, both of them expressing gratitude to the dog. The scene ends with the three animals continuing to enjoy the warm and colorful park together in Pixar-style 3D animation, with realistic animal features and a cinematic emotional tone.
+
+Tiêu đề tiếng Việt (tham khảo):
+
+Chú chó dũng cảm và đôi mèo biết ơn
+
+Nội dung tiếng Việt (để hiểu cốt truyện):
+
+Hai con mèo, một mẹ và một con mèo con, đang cùng nhau dạo bước trong công viên thành phố nhộn nhịp. 
+Bầu không khí sáng sủa và vui tươi, đầy cây xanh, ghế đá và những chi tiết tự nhiên sinh động. 
+Bất ngờ, mặt đất rung chuyển và một hố sụt mở ra, khiến mèo con rơi xuống. 
+Mèo mẹ vẫn ở trên mặt đất, kêu gào tuyệt vọng cầu cứu. 
+Một chú chó tốt bụng nhìn thấy cảnh tượng, bước lại gần với vẻ tò mò và nhanh chóng hiểu được sự nguy hiểm. 
+Với sự quyết tâm, chú chó thả một sợi dây xuống hố, giúp mèo con leo trở lên. 
+Mèo mẹ ôm chặt lấy mèo con trong niềm nhẹ nhõm, cả hai cùng bày tỏ lòng biết ơn với chú chó. 
+Cảnh kết thúc khi ba con vật cùng nhau tiếp tục tận hưởng công viên ấm áp và đầy màu sắc 
+với phong cách hoạt hình 3D kiểu Pixar, các chi tiết động vật chân thực và bầu không khí điện ảnh giàu cảm xúc.
+
+CHÚ Ý: COPY đoạn nội dung tiếng anh, ưu tiên dùng tiềng anh. Copy đoạn này cho vào nội dung trong tool:
+
+Two cats, a mother and her kitten, are walking together in a lively city park. The atmosphere is bright and cheerful, full of trees, benches, and playful details of nature. Suddenly, the ground shakes and a sinkhole opens, causing the kitten to fall into the hole. The mother cat stays on the surface, crying out desperately for help. A kind-hearted dog notices the scene, approaches with curiosity, and quickly understands the danger. With determination, the dog lowers a rope into the hole, allowing the kitten to climb back up. The mother cat embraces her kitten in relief, both of them expressing gratitude to the dog. The scene ends with the three animals continuing to enjoy the warm and colorful park together in Pixar-style 3D animation, with realistic animal features and a cinematic emotional tone.

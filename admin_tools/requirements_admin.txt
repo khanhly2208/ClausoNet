@@ -1,0 +1,24 @@
+# ClausoNet 4.0 Pro - Admin Key Generator Requirements
+# Các package cần thiết để chạy Admin Key Generator
+
+# GUI Framework
+customtkinter>=5.2.0
+
+# Build tool
+pyinstaller>=5.13.0
+
+# Standard libraries (usually included in Python)
+# json - built-in
+# pathlib - built-in
+# datetime - built-in
+# hashlib - built-in
+# random - built-in
+# string - built-in
+# tkinter - built-in (with Python)
+# os - built-in
+# sys - built-in
+# subprocess - built-in
+# shutil - built-in
+
+# Optional: For better UI experience
+pillow>=10.0.0  # For image handling if needed 

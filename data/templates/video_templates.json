@@ -1,0 +1,22 @@
+{
+  "templates": [
+    {
+      "name": "Professional",
+      "description": "Professional video template",
+      "settings": {
+        "quality": "high",
+        "duration": 30,
+        "style": "professional"
+      }
+    },
+    {
+      "name": "Creative",
+      "description": "Creative video template",
+      "settings": {
+        "quality": "high",
+        "duration": 60,
+        "style": "creative"
+      }
+    }
+  ]
+}

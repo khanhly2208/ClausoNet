@@ -1,0 +1,134 @@
+# ClausoNet 4.0 Pro - Git Ignore File
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Chrome Profiles (too large)
+chrome_profiles/
+**/chrome_profiles/
+**/Default/
+**/Profile */
+
+# Build outputs
+dist/
+build/
+*.exe
+*.app
+*.dmg
+*.pkg
+
+# Logs
+logs/
+*.log
+
+# Cache
+cache/
+temp/
+tmp/
+**/Cache/
+**/*cache*/
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# License files (sensitive)
+license/
+*.lic
+*.license
+
+# Backups
+backups/
+*.backup
+*.bak
+
+# Output videos
+output/
+videos/
+*.mp4
+*.avi
+*.mov
+
+# Chrome browser data
+**/AutofillStates/
+**/CertificateRevocation/
+**/CookieReadinessList/
+**/Crowd Deny/
+**/FileTypePolicies/
+**/FirstPartySetsPreloaded/
+**/MediaFoundationWidevineCdm/
+**/MEIPreload/
+**/OnDeviceHeadSuggestModel/
+**/OpenCookieDatabase/
+**/OptimizationHints/
+**/OriginTrials/
+**/PKIMetadata/
+**/ProbabilisticRevealTokenRegistry/
+**/SSLErrorAssistant/
+**/SafetyTips/
+**/Subresource Filter/
+**/TpcdMetadata/
+**/TrustTokenKeyCommitments/
+**/WasmTtsEngine/
+**/ZxcvbnData/
+
+# Chrome debugging
+chrome_debug.log
+DevToolsActivePort
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Sensitive data
+admin_data/license_database.json
+generated_keys.json
+
+# Test files
+github_actions_test.txt
+test_*.py
+
+# Large binary files
+*.zip
+*.tar.gz
+*.rar 

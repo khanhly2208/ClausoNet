@@ -1,0 +1,26 @@
+{
+  "name": "Default Video Generation Workflow",
+  "version": "1.0",
+  "steps": [
+    {
+      "id": "generate_prompt",
+      "type": "ai_generation",
+      "description": "Generate video prompt using AI"
+    },
+    {
+      "id": "create_video",
+      "type": "video_creation",
+      "description": "Create video using Google Veo"
+    },
+    {
+      "id": "download_result",
+      "type": "download",
+      "description": "Download generated video"
+    }
+  ],
+  "settings": {
+    "auto_save": true,
+    "backup_enabled": true,
+    "timeout": 300
+  }
+}

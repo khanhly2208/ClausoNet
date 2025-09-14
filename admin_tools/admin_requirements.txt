@@ -1,0 +1,42 @@
+# ClausoNet 4.0 Pro - Admin Tools Requirements
+# Install with: pip install -r admin_requirements.txt
+
+# GUI Framework
+customtkinter>=5.2.0
+
+# Data manipulation and export
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# Email functionality (included in Python standard library)
+# smtplib - built-in
+# email - built-in
+
+# JSON handling (included in Python standard library)
+# json - built-in
+
+# Date/time handling (included in Python standard library)
+# datetime - built-in
+
+# File operations (included in Python standard library)
+# os - built-in
+# sys - built-in
+
+# Threading (included in Python standard library)
+# threading - built-in
+
+# Logging (included in Python standard library)
+# logging - built-in
+
+# Cryptography for secure key generation
+hashlib  # built-in
+
+# UUID generation
+uuid  # built-in
+
+# Random number generation
+random  # built-in
+string  # built-in
+
+# Type hints
+typing  # built-in (Python 3.5+)

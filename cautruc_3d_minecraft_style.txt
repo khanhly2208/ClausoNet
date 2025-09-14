@@ -1,0 +1,51 @@
+Video hoạt hình xe cảnh sát 3D Minecraft-style
+1. Thông tin tổng thể
+
+Phong cách: Hoạt hình 3D voxel / Minecraft (khối lập phương, pixel vuông).
+
+Độ dài: 2 phút.
+
+Chủ đề: Cuộc rượt đuổi gay cấn giữa xe cảnh sát và xe tội phạm.
+
+Không khí: kịch tính nhưng vui nhộn (cartoon style).
+
+Âm thanh gợi ý: tiếng còi hú “wooo wooo”, nhạc nền sôi động.
+
+2. Cấu trúc từng cảnh (mẫu)
+
+Mỗi cảnh nên định nghĩa rõ:
+
+Bối cảnh: đường phố voxel, cao tốc, thành phố khối vuông, hầm pixel.
+
+Nhân vật chính: xe cảnh sát voxel (màu xanh-trắng, đèn đỏ-xanh chớp).
+
+Nhân vật phụ: xe tội phạm voxel (màu đen hoặc đỏ), người dân, đèn đường, cây pixel.
+
+Hành động chính: xe rượt đuổi, drift, vượt chướng ngại, bật đèn còi, bắt giữ.
+
+Thời lượng cảnh: 8–12 giây.
+
+Chuyển cảnh: camera pan/zoom, hoặc fade theo hành động (ví dụ xe lao qua camera → sang cảnh tiếp).
+
+3. Kịch bản gợi ý (10 cảnh)
+
+Cảnh 1: Thành phố voxel ban đêm – xe cảnh sát bật đèn còi lao ra từ đồn.
+Cảnh 2: Xe tội phạm chạy trên đường cao tốc, cảnh sát bám sát phía sau.
+Cảnh 3: Xe cảnh sát drift khối pixel ở khúc cua, tia lửa voxel bắn ra.
+Cảnh 4: Camera từ trên cao – cảnh rượt đuổi qua khu phố nhiều đèn neon voxel.
+Cảnh 5: Xe tội phạm vượt đèn đỏ, người đi bộ voxel nhảy né sang một bên.
+Cảnh 6: Xe cảnh sát gọi thêm 2 xe khác hỗ trợ, đèn chớp nháy khối pixel rực rỡ.
+Cảnh 7: Rượt qua cầu voxel, nước pixel phía dưới, trời sấm chớp.
+Cảnh 8: Xe cảnh sát chặn đầu, xe tội phạm quay đầu chạy lùi.
+Cảnh 9: Va chạm pixel – xe xoay vòng, khối vuông văng ra.
+Cảnh 10: Xe cảnh sát bắt được xe tội phạm, đèn chớp sáng, kết thúc bằng góc quay toàn cảnh thành phố voxel ban đêm.
+
+4. Hiệu ứng hình ảnh
+
+Đèn đỏ-xanh cảnh sát: pixel nhấp nháy liên tục.
+
+Khói bụi voxel bay ra từ bánh xe khi drift.
+
+Chướng ngại pixel (thùng rác, xe voxel khác).
+
+Hiệu ứng slow-motion khi bắt giữ.

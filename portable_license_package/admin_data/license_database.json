@@ -1,0 +1,165 @@
+{
+  "keys": [
+    {
+      "key": "CNPRO-QXCH-MIKW-FKXB-IC0I",
+      "type": "trial",
+      "license_format": "CNPRO",
+      "admin_type": "trial",
+      "duration_days": 7,
+      "max_devices": 1,
+      "features": [
+        "basic_generation",
+        "limited_workflows"
+      ],
+      "expiry_date": "2025-09-16T11:34:48.571021",
+      "created_at": "2025-09-09T11:34:48.581752",
+      "status": "generated",
+      "activation_count": 0,
+      "hardware_ids": [],
+      "customer_info": null,
+      "price": 0.0,
+      "currency": "USD"
+    },
+    {
+      "key": "CNPRO-DZGJ-TOYE-C34N-EVR0",
+      "type": "professional",
+      "license_format": "CNPRO",
+      "admin_type": "professional",
+      "duration_days": 365,
+      "max_devices": 3,
+      "features": [
+        "ai_generation",
+        "unlimited_workflows",
+        "api_access",
+        "priority_support"
+      ],
+      "expiry_date": "2026-09-09T11:38:48.672609",
+      "created_at": "2025-09-09T11:38:48.672609",
+      "status": "activated",
+      "activation_count": 1,
+      "hardware_ids": [
+        "8a5667731cfaf7dae5378766e3b5b305"
+      ],
+      "customer_info": {
+        "name": "Test User 1",
+        "email": "test1@example.com"
+      },
+      "price": 299.0,
+      "currency": "USD",
+      "activated_at": "2025-09-09T18:45:56.150268"
+    },
+    {
+      "key": "CNPRO-AE4I-KEWQ-KLGG-4L4Q",
+      "type": "professional",
+      "license_format": "CNPRO",
+      "admin_type": "professional",
+      "duration_days": 365,
+      "max_devices": 3,
+      "features": [
+        "ai_generation",
+        "unlimited_workflows",
+        "api_access",
+        "priority_support"
+      ],
+      "expiry_date": "2026-09-09T11:38:48.672609",
+      "created_at": "2025-09-09T11:38:48.672609",
+      "status": "generated",
+      "activation_count": 0,
+      "hardware_ids": [],
+      "customer_info": {
+        "name": "Test User 2",
+        "email": "test2@example.com"
+      },
+      "price": 299.0,
+      "currency": "USD"
+    },
+    {
+      "key": "CNPRO-TEST-1234-ABCD-PROF",
+      "type": "professional",
+      "license_format": "CNPRO",
+      "admin_type": "professional",
+      "duration_days": 365,
+      "max_devices": 3,
+      "features": [
+        "ai_generation",
+        "unlimited_workflows",
+        "api_access",
+        "priority_support"
+      ],
+      "expiry_date": "2026-09-09T11:38:48.672609",
+      "created_at": "2025-09-09T11:38:48.672609",
+      "status": "generated",
+      "activation_count": 0,
+      "hardware_ids": [],
+      "customer_info": {
+        "name": "Test Professional",
+        "email": "prof@example.com"
+      },
+      "price": 299.0,
+      "currency": "USD"
+    },
+    {
+      "key": "CNPRO-TRIA-L123-7DAY-S001",
+      "type": "trial",
+      "license_format": "CNPRO",
+      "admin_type": "trial",
+      "duration_days": 7,
+      "max_devices": 1,
+      "features": [
+        "basic_generation",
+        "limited_workflows"
+      ],
+      "expiry_date": "2025-09-16T11:38:48.672609",
+      "created_at": "2025-09-09T11:38:48.672609",
+      "status": "generated",
+      "activation_count": 0,
+      "hardware_ids": [],
+      "customer_info": {
+        "name": "Trial User",
+        "email": "trial@example.com"
+      },
+      "price": 0.0,
+      "currency": "USD"
+    },
+    {
+      "key": "CNPRO-LIFE-TIME-UNLM-LTIM",
+      "type": "lifetime",
+      "license_format": "CNPRO",
+      "admin_type": "lifetime",
+      "duration_days": 365,
+      "max_devices": 5,
+      "features": [
+        "ai_generation",
+        "unlimited_workflows",
+        "api_access",
+        "priority_support",
+        "lifetime_updates"
+      ],
+      "expiry_date": "2075-08-28T11:38:48.672609",
+      "created_at": "2025-09-09T11:38:48.672609",
+      "status": "generated",
+      "activation_count": 0,
+      "hardware_ids": [],
+      "customer_info": {
+        "name": "Lifetime User",
+        "email": "lifetime@example.com"
+      },
+      "price": 999.0,
+      "currency": "USD"
+    }
+  ],
+  "customers": [],
+  "statistics": {
+    "total_keys_generated": 6,
+    "trial_keys": 2,
+    "monthly_keys": 0,
+    "quarterly_keys": 0,
+    "lifetime_keys": 1,
+    "multi_device_keys": 0,
+    "keys_activated": 1,
+    "revenue_tracked": 0.0,
+    "professional_keys": 3
+  },
+  "created_at": "2025-09-09T08:29:37.945570",
+  "version": "1.0"
+}

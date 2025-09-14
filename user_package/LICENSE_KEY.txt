@@ -1,0 +1,40 @@
+
+🔑 ClausoNet 4.0 Pro - Your License Key
+
+Customer: demo@example.com
+Purchase Date: 2025-09-08 21:10:12
+
+LICENSE INFORMATION:
+===================
+License Key: CNPRO-QUART-PAID-2025-USER
+License Type: Quarterly License
+Duration: 90 days
+Expires: 2025-12-07 21:10:12
+Max Devices: 3 computer(s)
+Price Paid: $79.99
+
+FEATURES INCLUDED:
+================
+• Ai Generation
+• Unlimited Workflows
+• Api Access
+• Priority Support
+
+ACTIVATION INSTRUCTIONS:
+=======================
+1. Run ClausoNet4.0Pro.exe
+2. When prompted, enter this license key:
+   CNPRO-QUART-PAID-2025-USER
+3. Click "Activate License"
+4. Software will bind to your computer's hardware
+5. Start using immediately!
+
+IMPORTANT NOTES:
+===============
+• This license is valid until 2025-12-07
+• Can be activated on maximum 3 computer(s)
+• You'll receive expiry notifications before license expires
+• For support: help@clausonet.com
+• For renewal: support@clausonet.com
+
+Thank you for choosing ClausoNet 4.0 Pro!

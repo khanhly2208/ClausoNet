@@ -1,0 +1,38 @@
+
+🔧 HƯỚNG DẪN CÀI ĐẶT LICENSE DATABASE
+
+📁 1. COPY FOLDER admin_data:
+   - Copy thư mục 'admin_data' trong package này
+   - Paste vào: C:\Users\[USERNAME]\AppData\Local\ClausoNet4.0\
+   
+   Ví dụ với user 'dattu.TUEMINH-PC':
+   C:\Users\dattu.TUEMINH-PC\AppData\Local\ClausoNet4.0\admin_data\
+
+🔄 2. RESTART APP:
+   - Đóng hoàn toàn ClausoNet 4.0
+   - Mở lại app
+   
+🔑 3. NHẬP LICENSE KEY:
+   - Sử dụng một trong các keys có sẵn trong database
+   - Hoặc tạo key mới từ máy development
+
+📊 THỐNG KÊ DATABASE:
+   - Tạo lúc: 2025-09-09 18:45:56
+   - Total keys: 6
+
+📋 CÁC KEY CÓ SẴN:
+   1. CNPRO-QXCH-MIKW-FKXB-IC0I (trial) - Unknown
+   2. CNPRO-DZGJ-TOYE-C34N-EVR0 (professional) - Test User 1
+   3. CNPRO-AE4I-KEWQ-KLGG-4L4Q (professional) - Test User 2
+   4. CNPRO-TEST-1234-ABCD-PROF (professional) - Test Professional
+   5. CNPRO-TRIA-L123-7DAY-S001 (trial) - Trial User
+   6. CNPRO-LIFE-TIME-UNLM-LTIM (lifetime) - Lifetime User
+
+⚠️ LƯU Ý:
+   - Backup database cũ trước khi copy (nếu có)
+   - Đảm bảo đường dẫn chính xác
+   - Check log file để debug nếu có lỗi
+
+💬 HỖ TRỢ:
+   - Nếu vẫn lỗi, gửi log file từ app
+   - Log thường ở: AppData\Local\ClausoNet4.0\logs\
