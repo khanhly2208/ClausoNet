@@ -162,16 +162,7 @@ jobs:
         # Create a simple icon if none exists
         if [ ! -f "assets/icon.png" ] && [ ! -f "assets/icon.icns" ]; then
           echo "Creating default icon..."
-          python3 -c "
-from PIL import Image, ImageDraw
-img = Image.new('RGBA', (512, 512), (30, 144, 255, 255))
-draw = ImageDraw.Draw(img)
-draw.ellipse([50, 50, 462, 462], fill=(255, 255, 255, 255))
-draw.ellipse([100, 100, 412, 412], fill=(30, 144, 255, 255))
-draw.ellipse([200, 200, 312, 312], fill=(255, 255, 255, 255))
-img.save('assets/icon.png')
-print('✅ Default icon created')
-" 2>/dev/null || echo "⚠️ Could not create icon, continuing..."
+          python3 -c "from PIL import Image, ImageDraw; img = Image.new('RGBA', (512, 512), (30, 144, 255, 255)); draw = ImageDraw.Draw(img); draw.ellipse([50, 50, 462, 462], fill=(255, 255, 255, 255)); draw.ellipse([100, 100, 412, 412], fill=(30, 144, 255, 255)); draw.ellipse([200, 200, 312, 312], fill=(255, 255, 255, 255)); img.save('assets/icon.png'); print('✅ Default icon created')" 2>/dev/null || echo "⚠️ Could not create icon, continuing..."
         fi
         
     - name: 🏗️ Build Main Application (macOS .app)
@@ -242,33 +233,30 @@ print('✅ Default icon created')
         
         # Create installation guide
         cat > ../macos-release/INSTALLATION_GUIDE.txt << 'EOF'
-# ClausoNet 4.0 Pro - macOS Installation Guide
-
-## Quick Installation:
-1. Mount the DMG files by double-clicking them
-2. Drag applications to your Applications folder
-3. First run: Right-click → Open → Open anyway (security)
-
-## Contents:
-- ClausoNet 4.0 Pro.app - Main application
-- admin_tools/ - Admin key generator tools
-- *.dmg - Distribution disk images
-
-## Security Notes:
-If you see "App is damaged" or "Unidentified developer":
-```bash
-xattr -d com.apple.quarantine "ClausoNet 4.0 Pro.app"
-```
-
-## System Requirements:
-- macOS 10.14+ (Mojave or later)
-- 4GB+ RAM recommended
-- 2GB+ free disk space
-
-Built with GitHub Actions
-Platform: macOS
-Build Date: $(date)
-EOF
+        # ClausoNet 4.0 Pro - macOS Installation Guide
+        
+        ## Quick Installation:
+        1. Mount the DMG files by double-clicking them
+        2. Drag applications to your Applications folder
+        3. First run: Right-click → Open → Open anyway (security)
+        
+        ## Contents:
+        - ClausoNet 4.0 Pro.app - Main application
+        - admin_tools/ - Admin key generator tools
+        - *.dmg - Distribution disk images
+        
+        ## Security Notes:
+        If you see "App is damaged" or "Unidentified developer":
+        xattr -d com.apple.quarantine "ClausoNet 4.0 Pro.app"
+        
+        ## System Requirements:
+        - macOS 10.14+ (Mojave or later)
+        - 4GB+ RAM recommended
+        - 2GB+ free disk space
+        
+        Built with GitHub Actions
+        Platform: macOS
+        EOF
         
     - name: 📤 Upload macOS artifacts
       uses: actions/upload-artifact@v4
