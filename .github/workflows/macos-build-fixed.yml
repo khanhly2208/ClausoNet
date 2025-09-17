@@ -30,8 +30,8 @@ jobs:
       uses: trufflesecurity/trufflehog@main
       with:
         path: ./
-        base: main
-        head: HEAD
+        base: ""
+        head: ""
         
     - name: 🔐 Check for hardcoded API keys
       run: |
