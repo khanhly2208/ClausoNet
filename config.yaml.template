@@ -1,0 +1,67 @@
+# ClausoNet 4.0 Pro Configuration Template
+# Copy this to config.yaml and fill in your API keys
+
+# API Configuration
+apis:
+  gemini:
+    enabled: true
+    api_key: "YOUR_GEMINI_API_KEY"  # Get from https://makersuite.google.com/app/apikey
+    model: "gemini-2.5-flash"
+    max_tokens: 8192
+    temperature: 0.7
+    top_p: 0.9
+    top_k: 40
+    rate_limit: 60  # requests per minute
+    
+  openai:
+    enabled: true
+    api_key: "YOUR_OPENAI_API_KEY"  # Get from https://platform.openai.com/api-keys
+    model: "gpt-4-turbo"
+
+# Application Settings
+app:
+  name: "ClausoNet 4.0 Pro"
+  version: "1.0.0"
+  
+  # Paths
+  paths:
+    output: "./output"
+    temp: "./temp"
+    cache: "./data/cache"
+    templates: "./data/templates"
+    workflows: "./data/workflows"
+  
+  # Default Settings
+  defaults:
+    video_format: "mp4"
+    video_quality: "high"
+    audio_format: "aac"
+    max_concurrent_jobs: 3
+    
+  # UI Settings
+  ui:
+    theme: "dark"
+    language: "en"
+    auto_save: true
+    backup_workflows: true
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "./logs/clausonet.log"
+  max_size: "10MB"
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Security Settings
+security:
+  encryption_key: ""  # Will be generated automatically
+  license_check: true
+  hardware_binding: true
+  
+# Performance Settings
+performance:
+  cache_enabled: true
+  cache_size: "1GB"
+  parallel_processing: true
+  gpu_acceleration: false  # Set to true if GPU available 

@@ -96,7 +96,7 @@ class ProductionChromeDriverManager:
                     # Fallback to latest stable
                     version = "120"  # Hoặc get từ API
 
-            print(f"📥 Downloading ChromeDriver for Chrome {version}...")
+            print(f"📥 Downloading ChromeDriver for Chrome {version}... (Legacy API - may fail)")
 
             # Xác định platform
             if self.system == "Windows":
@@ -160,8 +160,9 @@ class ProductionChromeDriverManager:
             print(f"✅ Using local ChromeDriver: {local_path}")
             return local_path
 
-        # 3. Download nếu cần và được phép
-        if auto_download:
+        # 3. Skip download (Chrome 115+ uses different distribution method)
+        # Download is disabled to avoid 404 errors from deprecated URLs
+        if False:  # Disabled auto_download due to ChromeDriver API changes
             downloaded_path = self.download_chromedriver()
             if downloaded_path:
                 return downloaded_path

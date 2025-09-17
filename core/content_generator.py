@@ -202,7 +202,8 @@ class ContentGenerator:
     def generate_video_prompts(self, 
                               script: str, 
                               provider: str = 'gemini',
-                              style: str = 'cinematic') -> Dict[str, Any]:
+                              style: str = 'cinematic',
+                              video_duration: int = 48) -> Dict[str, Any]:
         """
         Tạo prompts cho AI video generation từ script
         
@@ -221,7 +222,7 @@ class ContentGenerator:
         
         try:
             if provider == 'gemini' and self.gemini_client:
-                result = self.gemini_client.generate_prompts_for_video_ai(script)
+                result = self.gemini_client.generate_prompts_for_video_ai(script, video_duration)
                 
                 if result.get('status') == 'success':
                     return {

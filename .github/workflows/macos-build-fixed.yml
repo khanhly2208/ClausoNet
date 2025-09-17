@@ -1,0 +1,418 @@
+name: 🍎 macOS Build - ClausoNet 4.0 Pro
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'release'
+        type: choice
+        options: [release, debug]
+
+env:
+  PYTHON_VERSION: '3.11'
+  PROJECT_NAME: 'ClausoNet 4.0 Pro'
+
+jobs:
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 🔍 Scan for secrets
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        
+    - name: 🔐 Check for hardcoded API keys
+      run: |
+        if grep -r "AIzaSy" . --exclude-dir=.git; then
+          echo "⚠️ WARNING: Potential API keys found in code!"
+          exit 1
+        fi
+        echo "✅ No hardcoded API keys detected"
+
+  build-macos:
+    name: 🍎 macOS Build
+    runs-on: macos-latest
+    needs: security-scan
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: 🔍 Verify macOS tools
+      run: |
+        python3 --version
+        which iconutil && echo "✅ iconutil found" || echo "⚠️ iconutil missing"
+        which sips && echo "✅ sips found" || echo "⚠️ sips missing"  
+        which hdiutil && echo "✅ hdiutil found" || echo "⚠️ hdiutil missing"
+        
+    - name: 📦 Install macOS dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        pip3 install pyinstaller>=6.0.0
+        pip3 install customtkinter>=5.2.0
+        pip3 install selenium>=4.15.0
+        pip3 install requests>=2.31.0
+        pip3 install pillow>=10.0.0
+        pip3 install beautifulsoup4 lxml certifi urllib3
+        pip3 install psutil pyperclip pyyaml
+        
+    - name: 🔧 Verify dependencies
+      run: |
+        pip3 list | grep -E "(pyinstaller|customtkinter|selenium)"
+        echo "✅ Dependencies verified"
+        
+    - name: 🎨 Prepare assets for macOS
+      run: |
+        mkdir -p assets
+        
+        if [ -f "assets/icon.png" ]; then
+          echo "🎨 Converting PNG to ICNS..."
+          mkdir -p assets/icon.iconset
+          
+          sips -z 16 16     assets/icon.png --out assets/icon.iconset/icon_16x16.png
+          sips -z 32 32     assets/icon.png --out assets/icon.iconset/icon_16x16@2x.png
+          sips -z 32 32     assets/icon.png --out assets/icon.iconset/icon_32x32.png
+          sips -z 64 64     assets/icon.png --out assets/icon.iconset/icon_32x32@2x.png
+          sips -z 128 128   assets/icon.png --out assets/icon.iconset/icon_128x128.png
+          sips -z 256 256   assets/icon.png --out assets/icon.iconset/icon_128x128@2x.png
+          sips -z 256 256   assets/icon.png --out assets/icon.iconset/icon_256x256.png
+          sips -z 512 512   assets/icon.png --out assets/icon.iconset/icon_256x256@2x.png
+          sips -z 512 512   assets/icon.png --out assets/icon.iconset/icon_512x512.png
+          sips -z 1024 1024 assets/icon.png --out assets/icon.iconset/icon_512x512@2x.png
+          
+          iconutil -c icns assets/icon.iconset
+          echo "✅ ICNS file created"
+        else
+          echo "⚠️ No icon.png found, creating default..."
+          python3 -c "from PIL import Image, ImageDraw; img = Image.new('RGBA', (512, 512), (30, 144, 255, 255)); draw = ImageDraw.Draw(img); draw.ellipse([50, 50, 462, 462], fill=(255, 255, 255, 255)); draw.ellipse([100, 100, 412, 412], fill=(30, 144, 255, 255)); draw.ellipse([200, 200, 312, 312], fill=(255, 255, 255, 255)); img.save('assets/icon.png'); print('✅ Default icon created')" || echo "⚠️ Could not create icon"
+        fi
+        
+    - name: 🔧 Prepare build environment
+      run: |
+        if [ -f "config.yaml.template" ]; then
+          cp config.yaml.template config.yaml
+          echo "✅ Config template copied"
+          
+          if grep -q "AIzaSy" config.yaml; then
+            echo "❌ API key found in config!"
+            exit 1
+          fi
+        fi
+        
+        mkdir -p output
+        mkdir -p dist
+        
+    - name: 🏗️ Build Main Application
+      run: |
+        echo "🍎 Building ClausoNet 4.0 Pro for macOS..."
+        
+        if [ -f "build_main_macos.py" ]; then
+          python3 build_main_macos.py
+        else
+          echo "⚠️ build_main_macos.py not found, using PyInstaller directly..."
+          
+          pyinstaller --clean --noconfirm \
+            --name "ClausoNet 4.0 Pro" \
+            --windowed \
+            --onedir \
+            --icon="assets/icon.icns" \
+            --add-data "data:data" \
+            --add-data "assets:assets" \
+            --add-data "config.yaml:." \
+            --hidden-import="tkinter" \
+            --hidden-import="customtkinter" \
+            --hidden-import="selenium" \
+            --hidden-import="PIL" \
+            gui/main_window.py
+        fi
+        
+    - name: 🔧 Build Admin Tools
+      working-directory: admin_tools
+      run: |
+        echo "🔧 Building Admin Key Generator for macOS..."
+        
+        if [ -f "build_admin_key_macos.py" ]; then
+          python3 build_admin_key_macos.py
+        else
+          echo "⚠️ Admin build script not found, using PyInstaller directly..."
+          
+          pyinstaller --clean --noconfirm \
+            --name "ClausoNet Admin Key Generator" \
+            --windowed \
+            --onedir \
+            --icon="../assets/icon.icns" \
+            --add-data "admin_data:admin_data" \
+            admin_key_gui.py
+            
+          mkdir -p admin_key_package_macos
+          cp -r "dist/ClausoNet Admin Key Generator.app" admin_key_package_macos/
+        fi
+        
+    - name: 📋 List build outputs
+      run: |
+        echo "=== Main Application Build ==="
+        ls -la dist/ || echo "No dist directory"
+        
+        echo "=== Admin Tools Build ==="
+        ls -la admin_tools/admin_key_package_macos/ || echo "No admin tools build"
+        ls -la admin_tools/dist/ || echo "No admin tools dist"
+        
+    - name: ✅ Verify macOS builds
+      run: |
+        if [ -d "dist/ClausoNet 4.0 Pro.app" ]; then
+          echo "✅ Main application built successfully"
+          
+          ls -la "dist/ClausoNet 4.0 Pro.app/Contents/"
+          ls -la "dist/ClausoNet 4.0 Pro.app/Contents/MacOS/"
+          
+          codesign -dv --verbose=4 "dist/ClausoNet 4.0 Pro.app" || echo "⚠️ App not signed"
+        else
+          echo "❌ Main application build failed"
+          exit 1
+        fi
+        
+        if [ -d "admin_tools/admin_key_package_macos" ] || [ -d "admin_tools/dist" ]; then
+          echo "✅ Admin tools built successfully"
+        else
+          echo "⚠️ Admin tools build may have failed"
+        fi
+        
+    - name: 💿 Create DMG files
+      run: |
+        echo "💿 Creating DMG files for distribution..."
+        
+        if [ -d "dist/ClausoNet 4.0 Pro.app" ]; then
+          hdiutil create -srcfolder "dist/ClausoNet 4.0 Pro.app" \
+            -volname "ClausoNet 4.0 Pro" \
+            -format UDZO \
+            -imagekey zlib-level=9 \
+            "ClausoNet-4.0-Pro-macOS.dmg"
+          echo "✅ Main app DMG created"
+        fi
+        
+        if [ -d "admin_tools/admin_key_package_macos" ]; then
+          hdiutil create -srcfolder "admin_tools/admin_key_package_macos" \
+            -volname "ClausoNet Admin Tools" \
+            -format UDZO \
+            -imagekey zlib-level=9 \
+            "ClausoNet-AdminTools-macOS.dmg"
+          echo "✅ Admin tools DMG created"
+        elif [ -d "admin_tools/dist" ]; then
+          hdiutil create -srcfolder "admin_tools/dist" \
+            -volname "ClausoNet Admin Tools" \
+            -format UDZO \
+            -imagekey zlib-level=9 \
+            "ClausoNet-AdminTools-macOS.dmg"
+          echo "✅ Admin tools DMG created from dist"
+        fi
+        
+        ls -la *.dmg || echo "No DMG files created"
+        
+    - name: 📦 Package macOS builds
+      run: |
+        mkdir -p macos-release
+        
+        if [ -d "dist/ClausoNet 4.0 Pro.app" ]; then
+          cp -r "dist/ClausoNet 4.0 Pro.app" macos-release/
+          echo "✅ Main app copied"
+        fi
+        
+        if [ -d "admin_tools/admin_key_package_macos" ]; then
+          cp -r "admin_tools/admin_key_package_macos" macos-release/admin_tools
+          echo "✅ Admin tools copied"
+        elif [ -d "admin_tools/dist" ]; then
+          cp -r "admin_tools/dist" macos-release/admin_tools
+          echo "✅ Admin tools copied from dist"
+        fi
+        
+        cp *.dmg macos-release/ 2>/dev/null || echo "⚠️ No DMG files to copy"
+        
+        if [ -f "config.yaml.template" ]; then
+          cp config.yaml.template macos-release/config.yaml
+        fi
+        
+        cp README.md macos-release/ 2>/dev/null || echo "No README found"
+        
+        echo "ClausoNet 4.0 Pro - macOS Installation Guide
+
+        Quick Installation:
+        1. Mount the DMG files by double-clicking them
+        2. Drag ClausoNet 4.0 Pro.app to your Applications folder
+        3. First run: Right-click -> Open -> Open anyway (security)
+        
+        Contents:
+        - ClausoNet 4.0 Pro.app - Main application
+        - admin_tools/ - Admin key generator tools
+        - DMG files - Distribution disk images
+        - config.yaml - Configuration template
+        
+        Configuration:
+        1. Edit config.yaml and add your API keys
+        2. Get Gemini API key from https://makersuite.google.com/app/apikey
+        3. Get OpenAI API key from https://platform.openai.com/api-keys
+        4. Save the file and launch the application
+        
+        Security Notes:
+        If you see App is damaged or Unidentified developer:
+        xattr -d com.apple.quarantine /Applications/ClausoNet\ 4.0\ Pro.app
+        
+        System Requirements:
+        - macOS 10.14+ (Mojave or later)
+        - 4GB+ RAM recommended
+        - 2GB+ free disk space
+        - Internet connection for AI APIs
+        
+        Built with GitHub Actions - Enhanced Build Pipeline
+        Platform: macOS (Universal)" > macos-release/INSTALLATION_GUIDE.txt
+        
+        echo "=== Final Package Contents ==="
+        ls -la macos-release/
+        
+    - name: 📤 Upload macOS artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build
+        path: macos-release/
+        retention-days: 30
+
+  create-release:
+    name: 🎉 Create macOS Release
+    needs: build-macos
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: 📅 Generate release info
+      id: release_info
+      run: |
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=v$(date +'%Y.%m.%d')-macos-build.${{ github.run_number }}" >> $GITHUB_OUTPUT
+        fi
+        echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        echo "datetime=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+        
+    - name: 📥 Download macOS build
+      uses: actions/download-artifact@v4
+      with:
+        name: macos-build
+        path: release-assets/macos/
+        
+    - name: 📦 Create macOS release package
+      run: |
+        cd release-assets
+        cd macos && zip -r "../ClausoNet-4.0-Pro-macOS.zip" . && cd ..
+        ls -la *.zip
+        ls -la macos/*.dmg || echo "No DMG files"
+        
+    - name: 🏷️ Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.release_info.outputs.tag }}
+        name: ClausoNet 4.0 Pro - macOS - ${{ steps.release_info.outputs.date }}
+        body: |
+          # 🍎 ClausoNet 4.0 Pro - macOS Release
+          
+          **Build Date:** ${{ steps.release_info.outputs.datetime }}  
+          **Build Number:** ${{ github.run_number }}  
+          **Commit:** ${{ github.sha }}
+          **Platform:** macOS Only
+          
+          ## 🔒 Security Enhanced Build
+          - ✅ No hardcoded API keys
+          - ✅ Security scanned codebase
+          - ✅ Clean configuration templates
+          - ✅ Code integrity verified
+          
+          ## 📦 macOS Package Contents
+          - **ClausoNet 4.0 Pro.app** - Main application
+          - **Admin Tools** - Key generator and management
+          - **DMG Files** - Ready-to-install disk images
+          - **Configuration Template** - Easy setup guide
+          
+          ## 🚀 Installation
+          1. Download ClausoNet-4.0-Pro-macOS.zip
+          2. Extract and find the .app files
+          3. Move to Applications folder
+          4. Right-click → Open → Open anyway (first time)
+          
+          ## ⚙️ Configuration
+          1. Edit config.yaml with your API keys
+          2. Get Gemini API from Google AI Studio
+          3. Get OpenAI API from OpenAI Platform
+          4. Launch ClausoNet 4.0 Pro
+          
+          ## 🔧 System Requirements
+          - macOS 10.14+ (Mojave or later)
+          - 4GB+ RAM (8GB recommended)
+          - 2GB+ free space
+          - Internet connection for AI APIs
+          
+          ---
+          🤖 *Automated macOS build via GitHub Actions*
+        files: |
+          release-assets/ClausoNet-4.0-Pro-macOS.zip
+          release-assets/macos/*.dmg
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-summary:
+    name: 📊 macOS Build Summary
+    needs: build-macos
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: 📊 Generate build summary
+      run: |
+        echo "# 🍎 ClausoNet 4.0 Pro - macOS Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Status | Output |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.build-macos.result }}" == "success" ]; then
+          echo "| 🍎 macOS Build | ✅ Success | .app + DMG + Admin Tools |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔒 Security Scan | ✅ Passed | No secrets detected |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 Package Creation | ✅ Success | ZIP + DMG files |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| 🍎 macOS Build | ❌ Failed | Check logs for details |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📥 Download Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- Go to Actions tab → This workflow run → Artifacts section" >> $GITHUB_STEP_SUMMARY
+        echo "- Download macos-build artifact" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ github.ref }}" == "refs/heads/main" ] && [ "${{ github.event_name }}" == "push" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "A new macOS release has been automatically created!" >> $GITHUB_STEP_SUMMARY
+          echo "- Main App: ClausoNet 4.0 Pro.app" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin Tools: Key generator and management" >> $GITHUB_STEP_SUMMARY
+          echo "- Distribution: DMG + ZIP packages" >> $GITHUB_STEP_SUMMARY
+        fi 

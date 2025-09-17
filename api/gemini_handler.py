@@ -176,7 +176,8 @@ class GeminiClient:
                 "temperature": self.temperature,
                 "topK": self.top_k,
                 "topP": self.top_p,
-                "maxOutputTokens": self.max_tokens
+                "maxOutputTokens": self.max_tokens,
+                "candidateCount": 1  # 🔧 FIX: Chỉ trả về 1 kết quả duy nhất
             }
 
             if generation_config:
@@ -392,41 +393,57 @@ Original script:
 
         return self.generate_content(prompt=prompt)
 
-    def generate_prompts_for_video_ai(self, script: str) -> Dict[str, Any]:
-        """Tạo prompts cho AI tạo video với character consistency"""
-        prompt = f"""Convert this video script into detailed prompts for AI video generation (like Google Veo).
+    def generate_prompts_for_video_ai(self, script: str, video_duration: int = 48) -> Dict[str, Any]:
+        """Dynamic template tạo prompts dựa trên user content với visual consistency hoàn hảo"""
+        
+        # 🎯 CALCULATE NUMBER OF PROMPTS BASED ON VIDEO DURATION
+        prompts_needed = max(1, min(10, video_duration // 8))  # Min 1, Max 10 prompts
+        actual_duration = prompts_needed * 8
+        
+        self.logger.info(f"🎬 Video Duration: {video_duration}s → {prompts_needed} prompts → {actual_duration}s actual")
+        
+        # 🎯 DYNAMIC PROMPT FORMAT BASED ON DURATION
+        prompt_format = "\n".join([f"PROMPT {i+1}: [content]" for i in range(prompts_needed)])
+        
+        prompt = f"""PHASE 1: ANALYZE USER SCRIPT AND EXTRACT CORE ELEMENTS
+First, carefully read this script: "{script}"
 
-🎯 CRITICAL CHARACTER CONSISTENCY REQUIREMENTS:
-1. DO NOT create new character names or proper names
-2. Use ONLY the character descriptions from the original script
-3. Maintain exact same character references throughout all prompts
-4. If script says "mother cat" - always use "the mother cat", never invent names like "Luna"
-5. If script says "kitten" - always use "the kitten" or "the small kitten"
-6. If script says "dog" - always use "the dog" or "the golden retriever dog"
+PHASE 2: CREATE CONSISTENT PROMPTS
+Convert script to video prompts. Use EXACTLY this format:
 
-📝 FORMAT REQUIREMENTS:
-Each prompt should include:
-- Detailed visual description
-- Camera angles and movements
-- Lighting conditions
-- Mood and atmosphere
-- Animation style (Pixar-style 3D if mentioned)
-- Keep under 200 words per prompt
+{prompt_format}
 
-🎬 CHARACTER REFERENCE RULES:
-- Refer to characters consistently using descriptive terms
-- Example: "the graceful mother cat" not "Luna"
-- Example: "the playful kitten" not "Patch"
-- Example: "the kind golden retriever" not "Barnaby"
-- Focus on visual characteristics rather than names
+CRITICAL CONSISTENCY RULES:
+1. EXTRACT main characters from the user script - describe them with 2-3 specific visual details
+2. EXTRACT main environment from the user script - describe with 2-3 specific visual details  
+3. USE THE SAME character descriptions in EVERY prompt (copy exactly)
+4. USE THE SAME environment description in EVERY prompt (copy exactly)
+5. Each prompt = 8 seconds, one action only
+6. MAXIMUM {prompts_needed} PROMPTS ONLY ({actual_duration} seconds total video)
+7. PROMPT 2+ must start with "Same characters and setting:"
 
-Format:
-PROMPT 1: [Detailed scene description with consistent character references]
-PROMPT 2: [Detailed scene description with consistent character references]
-...
+CONSISTENCY TEMPLATE:
+- First, identify WHO are the main characters in the script
+- Then, identify WHERE the story takes place
+- Use these SAME elements in every single prompt
 
-Script to convert:
-{script}"""
+EXAMPLE STRUCTURE (adapt to YOUR script content):
+PROMPT 1: [Main character with specific visual details] [action] in [specific environment with visual details]. [Camera angle].
+
+PROMPT 2: Same characters and setting: [EXACT same character descriptions] [different action] in [EXACT same environment]. [Camera angle].
+
+PROMPT 3: Same characters and setting: [EXACT same character descriptions] [different action] in [EXACT same environment]. [Camera angle].
+
+IMPORTANT NOTES:
+- DO NOT use cats/dogs/park unless they are in the user script
+- EXTRACT characters and setting FROM THE USER SCRIPT ONLY
+- Keep character descriptions identical across all prompts
+- Keep environment description identical across all prompts
+- Focus on the story progression while maintaining visual consistency
+
+USER SCRIPT TO CONVERT: {script}
+
+Generate EXACTLY {prompts_needed} prompts following the user's story content:"""
 
         return self.generate_content(prompt=prompt)
 

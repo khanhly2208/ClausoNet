@@ -2681,6 +2681,2703 @@ class VeoWorkflowEngine:
             self.update_status(f"⚠️ Button close method failed: {e}")
 
     def _method_outside_click(self):
+        """Method 3: Enhanced outside click to close popup"""
+        self.update_status("🔧 Method 3: Enhanced outside click...")
+        try:
+            # Click multiple positions outside any popup areas
+            outside_positions = [
+                (50, 50),    # Top-left corner
+                (100, 100),  # Upper area
+                (200, 200)   # Middle area
+            ]
+            
+            for x, y in outside_positions:
+                try:
+                    ActionChains(self.driver).move_by_offset(x, y).click().perform()
+                    time.sleep(0.5)
+                    # Reset mouse position
+                    ActionChains(self.driver).move_by_offset(-x, -y).perform()
+                except:
+                    continue
+                    
+        except Exception as e:
+            self.update_status(f"⚠️ Outside click method failed: {e}")
+from tkinter import filedialog, messagebox
+import threading
+import asyncio
+import json
+import os
+import time
+
+import hashlib
+import platform
+import subprocess
+import psutil
+import uuid
+import queue
+import logging
+import pyperclip
+import gc
+from pathlib import Path
+from typing import Dict, Any, List
+from threading import Lock, RLock
+from contextlib import contextmanager
+
+# Import backend components
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.engine import AIEngine, ProcessingRequest
+from core.content_generator import ContentGenerator
+# from utils.license_wizard import LicenseWizard  # OLD LICENSE SYSTEM - REMOVED
+# from admin_tools.license_key_generator import LicenseKeyGenerator  # COMPLEX ADMIN SYSTEM - REMOVED
+from core.simple_license_system import SimpleLicenseSystem  # SIMPLIFIED USER SYSTEM
+from utils.profile_manager import ChromeProfileManager
+from utils.veo_automation import VeoAutomation, create_video_from_prompts
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+import yaml
+import time
+
+# Set appearance mode and color theme
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+class StatusManager:
+    """
+    🔒 THREAD-SAFE STATUS MANAGER
+    Xử lý status updates từ worker threads an toàn
+    """
+
+    def __init__(self, gui_instance):
+        self.gui = gui_instance
+        self.status_queue = queue.Queue()
+        self._running = False
+
+    def start(self):
+        """Start processing status updates"""
+        if not self._running:
+            self._running = True
+            self.process_status_updates()
+
+    def stop(self):
+        """Stop processing status updates"""
+        self._running = False
+
+    def update_status(self, message):
+        """Thread-safe status update"""
+        if self._running:
+            self.status_queue.put(message)
+
+    def process_status_updates(self):
+        """Process status updates in GUI thread"""
+        if not self._running:
+            return
+
+        try:
+            # Check if GUI still exists
+            if not hasattr(self.gui, 'root') or not self.gui.root.winfo_exists():
+                self._running = False
+                return
+
+            # Process all pending messages
+            messages_processed = 0
+            while messages_processed < 10:  # Limit per cycle to avoid GUI blocking
+                try:
+                    message = self.status_queue.get_nowait()
+                    if hasattr(self.gui, 'status_var') and self.gui.status_var:
+                        self.gui.status_var.set(message)
+                    messages_processed += 1
+                except queue.Empty:
+                    break
+        except Exception as e:
+            print(f"Status update error: {e}")
+            self._running = False
+            return
+
+        # Schedule next processing cycle
+        if self._running and hasattr(self.gui, 'root') and self.gui.root.winfo_exists():
+            try:
+                self.gui.root.after(100, self.process_status_updates)
+            except Exception as e:
+                print(f"Error scheduling status update: {e}")
+                self._running = False
+
+class ProgressTracker:
+    """
+    📊 PROGRESS TRACKING SYSTEM
+    Track step-by-step progress cho Phase 3
+    """
+
+    def __init__(self, total_steps, callback=None):
+        self.total_steps = total_steps
+        self.current_step = 0
+        self.callback = callback
+        self.step_details = []
+        self._lock = Lock()
+
+    def update(self, step_name, success=None, details=None):
+        """Update progress with thread safety"""
+        with self._lock:
+            self.current_step += 1
+            percentage = (self.current_step / self.total_steps) * 100
+
+            step_info = {
+                'step': self.current_step,
+                'name': step_name,
+                'percentage': percentage,
+                'success': success,
+                'details': details,
+                'timestamp': time.time()
+            }
+
+            self.step_details.append(step_info)
+
+            if self.callback:
+                self.callback(step_info)
+
+    def get_progress(self):
+        """Get current progress safely"""
+        with self._lock:
+            return {
+                'current_step': self.current_step,
+                'total_steps': self.total_steps,
+                'percentage': (self.current_step / self.total_steps) * 100,
+                'details': self.step_details.copy()
+            }
+
+class VeoWorkflowEngine:
+    """
+    🎬 THREAD-SAFE VEO 3 WORKFLOW ENGINE
+    Enhanced với thread safety và progress tracking
+    """
+
+    def __init__(self, gui_instance):
+        self.gui = gui_instance  # Reference to main GUI
+        self.driver = None
+        self.wait = None
+        self.current_element = None
+
+        # 🔒 Thread safety
+        self._lock = RLock()
+        self._driver_lock = Lock()
+        self._is_running = False
+
+        # 🎯 ENHANCED CONFIGURATION: Triệt để fix timeout và session issues
+        self.config = {
+            'wait_timeout': 10,  # Increased from 5
+            'retry_attempts': 5,  # Increased from 3
+            'fast_mode': True,
+            'prompt_retry_attempts': 5,  # Increased from 3
+            'video_detection_retries': 5,  # Increased from 3
+            'download_retry_attempts': 5,  # Increased from 3
+            'session_recovery_attempts': 3,  # Increased from 2
+            'retry_delay': 5,
+            'video_generation_timeout': 600,  # 10 minutes for video generation
+            'session_check_interval': 30,  # Check session every 30s
+            'extended_timeout_for_complex_videos': 900,  # 15 minutes for complex videos
+            'session_recovery_delay': 5  # Wait after session recovery
+        }
+
+        # 🔒 Thread-safe video tracking
+        self._video_lock = Lock()
+        self.downloaded_videos = set()
+        self.current_session_videos = set()
+        self.video_cache = {}
+        
+        # 🔢 Video counter for sequential naming (1_1, 1_2, 1_3...)
+        self.video_counter = 0
+
+        # 📊 Progress tracking
+        self.progress_tracker = None
+
+        # 🔒 Thread-safe status manager
+        self.status_manager = None
+        if hasattr(gui_instance, 'status_manager'):
+            self.status_manager = gui_instance.status_manager
+
+    def update_status(self, message):
+        """Thread-safe status update - Legacy method, prefer update_status_with_log"""
+        print(f"[VeoEngine] {message}")  # Console output with prefix
+        if hasattr(self.gui, 'log_to_workflow'):
+            # Use new log system if available
+            self.gui.log_to_workflow(message, level='info')
+        elif self.status_manager:
+            self.status_manager.update_status(message)
+        elif hasattr(self.gui, 'status_var'):
+            # Fallback to direct update với root.after
+            self.gui.root.after(0, lambda: self.gui.status_var.set(message))
+
+    def update_status_with_log(self, message, level='info'):
+        """Enhanced status update with log system"""
+        print(f"[VeoEngine] {message}")  # Console output with prefix
+        if hasattr(self.gui, 'update_status_with_log'):
+            self.gui.update_status_with_log(message, level)
+        else:
+            # Fallback to legacy update
+            self.update_status(message)
+
+    @contextmanager
+    def chrome_session(self, profile_name):
+        """Context manager for Chrome session với automatic cleanup"""
+        driver = None
+        try:
+            with self._driver_lock:
+                self.update_status_with_log("🚀 Setting up Chrome session...")
+
+                # 🎯 FIX: Use ProductionChromeDriverManager for exe compatibility
+                try:
+                    from utils.production_chrome_manager import ProductionChromeDriverManager
+                    from utils.resource_manager import resource_manager
+                    
+                    chrome_manager = ProductionChromeDriverManager(resource_manager)
+                    
+                    # Get profile path from ProfileManager
+                    profile_manager = self.gui.profile_manager
+                    profile_path = str(profile_manager.base_profile_dir / profile_name)
+                    
+                    # Create driver using production manager
+                    driver = chrome_manager.create_webdriver(
+                        profile_path=profile_path,
+                        headless=False,
+                        debug_port=9222
+                    )
+                    
+                    self.update_status_with_log("✅ Chrome session established with ProductionChromeManager")
+                    
+                except ImportError as e:
+                    self.update_status_with_log(f"⚠️ Production manager not available, using fallback: {e}")
+                    
+                    # Fallback to original method
+                    profile_manager = self.gui.profile_manager
+                    profile_path = profile_manager.base_profile_dir / profile_name
+
+                    options = Options()
+                    options.add_argument(f"--user-data-dir={str(profile_path.absolute())}")
+                    options.add_argument("--profile-directory=Default")
+                    options.add_argument("--no-first-run")
+                    options.add_argument("--no-default-browser-check")
+                    options.add_argument("--disable-default-apps")
+                    options.add_argument("--disable-dev-shm-usage")
+                    options.add_argument("--no-sandbox")
+
+                    # Create driver
+                    driver = webdriver.Chrome(options=options)
+
+                driver.implicitly_wait(2)
+                self.driver = driver
+                self.wait = WebDriverWait(driver, self.config['wait_timeout'])
+                self.update_status_with_log("✅ Chrome session ready")
+
+                yield driver
+
+        except Exception as e:
+            self.update_status_with_log(f"❌ Chrome setup failed: {e}", level='error')
+            raise
+        finally:
+            # Cleanup
+            if driver:
+                try:
+                    driver.quit()
+                    self.update_status_with_log("🔒 Chrome session closed")
+                except Exception as e:
+                    self.update_status_with_log(f"⚠️ Chrome cleanup warning: {e}", level='warning')
+
+            self.driver = None
+            self.wait = None
+
+    def setup_chrome_for_gui(self, profile_name):
+        """Legacy method - use chrome_session context manager instead"""
+        self.update_status("🚀 Setting up Chrome for Veo workflow...")
+
+        try:
+            with self._driver_lock:
+                # 🎯 FIX: Use ProductionChromeDriverManager for exe compatibility
+                try:
+                    from utils.production_chrome_manager import ProductionChromeDriverManager
+                    from utils.resource_manager import resource_manager
+                    
+                    chrome_manager = ProductionChromeDriverManager(resource_manager)
+                    
+                    # Get profile path from ProfileManager
+                    profile_manager = self.gui.profile_manager
+                    profile_path = str(profile_manager.base_profile_dir / profile_name)
+                    
+                    # Create driver using production manager
+                    self.driver = chrome_manager.create_webdriver(
+                        profile_path=profile_path,
+                        headless=False,
+                        debug_port=9222
+                    )
+                    
+                    self.update_status("✅ Chrome setup complete with ProductionChromeManager")
+                    
+                except ImportError as e:
+                    self.update_status(f"⚠️ Production manager not available, using fallback: {e}")
+                    
+                    # Fallback to original method
+                    profile_manager = self.gui.profile_manager
+                    profile_path = profile_manager.base_profile_dir / profile_name
+
+                    options = Options()
+                    options.add_argument(f"--user-data-dir={str(profile_path.absolute())}")
+                    options.add_argument("--profile-directory=Default")
+                    options.add_argument("--no-first-run")
+                    options.add_argument("--no-default-browser-check")
+                    options.add_argument("--disable-default-apps")
+                    options.add_argument("--disable-extensions")
+                    options.add_argument("--disable-popup-blocking")
+                    options.add_argument("--no-sandbox")
+                    options.add_argument("--disable-dev-shm-usage")
+
+                    try:
+                        from webdriver_manager.chrome import ChromeDriverManager
+                        from selenium.webdriver.chrome.service import Service
+                        service = Service(ChromeDriverManager().install())
+                        self.driver = webdriver.Chrome(service=service, options=options)
+                    except ImportError:
+                        self.driver = webdriver.Chrome(options=options)
+
+                    self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                    self.update_status("✅ Chrome setup complete!")
+
+                self.wait = WebDriverWait(self.driver, self.config['wait_timeout'])
+                return True
+
+        except Exception as e:
+            self.update_status(f"❌ Chrome setup failed: {e}")
+            return False
+
+    def navigate_to_veo(self):
+        """Navigate to Google Veo"""
+        self.update_status_with_log("🌐 Navigating to Google Veo...")
+
+        try:
+            veo_url = "https://labs.google/fx/vi/tools/flow"
+            self.driver.get(veo_url)
+
+            # Wait for page load
+            self.wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
+
+            self.update_status_with_log("✅ Navigated to Veo successfully")
+            return True
+
+        except Exception as e:
+            self.update_status_with_log(f"❌ Navigation failed: {e}", level='error')
+            return False
+
+    def find_new_project_button(self):
+        """Tìm nút tạo dự án mới"""
+        self.update_status_with_log("🔍 Finding New Project button...")
+
+        selectors = [
+            "//button[contains(text(), 'Dự án mới')]",
+            "//button[contains(text(), 'New project')]",
+            "//button[contains(text(), 'Tạo')]",
+            "//button[contains(., 'add') and contains(text(), 'Dự án')]",
+            "//header//button[1]",
+            "//nav//button[contains(text(), 'Dự án')]"
+        ]
+
+        for selector in selectors:
+            try:
+                element = self.wait.until(EC.element_to_be_clickable((By.XPATH, selector)))
+                if element and element.is_displayed():
+                    self.update_status_with_log("✅ Found New Project button")
+                    return element
+            except TimeoutException:
+                continue
+
+        self.update_status_with_log("❌ New Project button not found", level='error')
+        return None
+
+    def safe_click(self, element, element_name="element"):
+        """Click element với multiple fallback methods"""
+        if not element:
+            self.update_status_with_log(f"❌ Cannot click {element_name}: element is None", level='error')
+            return False
+
+        methods = [
+            ("Regular Click", lambda: element.click()),
+            ("JavaScript Click", lambda: self.driver.execute_script("arguments[0].click();", element)),
+            ("ActionChains Click", lambda: ActionChains(self.driver).move_to_element(element).click().perform())
+        ]
+
+        for method_name, click_func in methods:
+            try:
+                # Scroll to element
+                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+                time.sleep(0.5)
+
+                click_func()
+                time.sleep(1)
+                self.update_status_with_log(f"✅ {element_name} clicked using {method_name}")
+                return True
+
+            except Exception as e:
+                continue
+
+        self.update_status_with_log(f"❌ All click methods failed for {element_name}", level='error')
+        return False
+
+    def safe_click_send_button(self, element):
+        """🎯 SPECIAL: Enhanced send button click với comprehensive verification"""
+        if not element:
+            self.update_status("❌ Cannot click send button: element is None")
+            return False
+
+        self.update_status("🎯 ENHANCED: Clicking send button with verification...")
+        
+        # Pre-click validation
+        pre_validation = self._validate_send_button(element)
+        if not pre_validation['is_valid']:
+            self.update_status(f"❌ Pre-click validation failed: {pre_validation['reason']}")
+            return False
+        
+        self.update_status(f"✅ Pre-click validation passed: {pre_validation['reason']}")
+        
+        # Enhanced click methods for send button
+        methods = [
+            ("Regular Click", lambda: element.click()),
+            ("JavaScript Click", lambda: self.driver.execute_script("arguments[0].click();", element)),
+            ("ActionChains Click", lambda: ActionChains(self.driver).move_to_element(element).click().perform()),
+            ("Force Focus + Click", lambda: self._force_focus_click(element)),
+            ("Event Dispatch Click", lambda: self._event_dispatch_click(element))
+        ]
+
+        for method_name, click_func in methods:
+            try:
+                self.update_status(f"🔧 Trying {method_name}...")
+                
+                # Scroll to element and ensure visibility
+                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+                time.sleep(0.5)
+
+                # Store state before click
+                pre_click_url = self.driver.current_url
+                
+                # Perform click
+                click_func()
+                time.sleep(2)  # Wait for action to process
+                
+                # Post-click verification
+                post_click_verification = self._verify_send_button_action()
+                
+                if post_click_verification['success']:
+                    self.update_status(f"✅ Send button clicked successfully using {method_name}")
+                    self.update_status(f"✅ Post-click verification: {post_click_verification['reason']}")
+                    return True
+                else:
+                    self.update_status(f"⚠️ {method_name} clicked but no send action detected: {post_click_verification['reason']}")
+                    continue
+
+            except Exception as e:
+                self.update_status(f"⚠️ {method_name} failed: {e}")
+                continue
+
+        self.update_status("❌ All send button click methods failed")
+        return False
+
+    def _force_focus_click(self, element):
+        """Force focus and click"""
+        self.driver.execute_script("""
+            var elem = arguments[0];
+            elem.focus();
+            elem.click();
+        """, element)
+
+    def _event_dispatch_click(self, element):
+        """Dispatch click event directly"""
+        self.driver.execute_script("""
+            var elem = arguments[0];
+            var event = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true
+            });
+            elem.dispatchEvent(event);
+        """, element)
+
+    def _verify_send_button_action(self):
+        """Verify that send button click actually triggered the expected action"""
+        try:
+            # Wait a moment for UI to react
+            time.sleep(1)
+            
+            # Check for signs that prompt was sent
+            verification_indicators = [
+                # 1. URL change (navigation to generation page)
+                lambda: self._check_url_change(),
+                
+                # 2. Loading/generation indicators
+                lambda: self._check_loading_indicators(),
+                
+                # 3. UI state changes
+                lambda: self._check_ui_state_change(),
+                
+                # 4. Send button state change
+                lambda: self._check_send_button_disabled()
+            ]
+            
+            for indicator in verification_indicators:
+                try:
+                    result = indicator()
+                    if result['positive']:
+                        return {'success': True, 'reason': result['reason']}
+                except:
+                    continue
+            
+            return {'success': False, 'reason': 'No positive indicators of send action detected'}
+            
+        except Exception as e:
+            return {'success': False, 'reason': f'Verification error: {e}'}
+
+    def _check_url_change(self):
+        """Check if URL changed indicating navigation"""
+        current_url = self.driver.current_url
+        if 'loading' in current_url or 'generate' in current_url or 'processing' in current_url:
+            return {'positive': True, 'reason': f'URL changed to: {current_url[-50:]}'}
+        return {'positive': False, 'reason': 'No URL change detected'}
+
+    def _check_loading_indicators(self):
+        """Check for loading/generation indicators"""
+        loading_selectors = [
+            "[class*='loading']", "[class*='spinner']", "[class*='progress']",
+            "//*[contains(text(), 'Generating')]", "//*[contains(text(), 'Processing')]",
+            "//*[contains(text(), 'Đang tạo')]", "//*[contains(text(), 'Đang xử lý')]"
+        ]
+        
+        for selector in loading_selectors:
+            try:
+                if selector.startswith('//'):
+                    elements = self.driver.find_elements(By.XPATH, selector)
+                else:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                
+                if any(elem.is_displayed() for elem in elements):
+                    return {'positive': True, 'reason': f'Loading indicator found: {selector}'}
+            except:
+                continue
+        
+        return {'positive': False, 'reason': 'No loading indicators found'}
+
+    def _check_ui_state_change(self):
+        """Check for significant UI state changes"""
+        try:
+            # Check if prompt input is now disabled/hidden
+            prompt_inputs = self.driver.find_elements(By.XPATH, "//textarea[@id='PINHOLE_TEXT_AREA_ELEMENT_ID']")
+            if prompt_inputs:
+                prompt_input = prompt_inputs[0]
+                if not prompt_input.is_enabled() or not prompt_input.is_displayed():
+                    return {'positive': True, 'reason': 'Prompt input disabled/hidden after send'}
+            
+            # Check page title change
+            title = self.driver.title
+            if any(keyword in title.lower() for keyword in ['generating', 'processing', 'đang tạo']):
+                return {'positive': True, 'reason': f'Page title indicates processing: {title}'}
+            
+            return {'positive': False, 'reason': 'No significant UI state change detected'}
+        except:
+            return {'positive': False, 'reason': 'UI state check failed'}
+
+    def _check_send_button_disabled(self):
+        """Check if send button is now disabled"""
+        try:
+            # Re-find potential send buttons and check if disabled
+            send_buttons = self.driver.find_elements(By.XPATH, "//button[contains(., 'arrow_forward') or @type='submit']")
+            disabled_count = len([btn for btn in send_buttons if btn.is_displayed() and not btn.is_enabled()])
+            
+            if disabled_count > 0:
+                return {'positive': True, 'reason': f'{disabled_count} send buttons now disabled'}
+            
+            return {'positive': False, 'reason': 'Send buttons still enabled'}
+        except:
+            return {'positive': False, 'reason': 'Send button state check failed'}
+
+    def find_prompt_input(self):
+        """Enhanced prompt input detection với UI settlement"""
+        self.update_status("🔍 Finding prompt input...")
+        
+        # 🎯 ENHANCED: Wait for UI to fully settle
+        self.update_status("⏳ Waiting for UI to fully settle...")
+        time.sleep(2)
+        
+        # 🎯 ENHANCED: Multiple scroll attempts to find prompt input
+        scroll_attempts = [
+            "window.scrollTo(0, 0);",  # Top of page
+            "window.scrollTo(0, document.body.scrollHeight/4);",  # Quarter down
+            "window.scrollTo(0, document.body.scrollHeight/3);",  # Third down  
+            "window.scrollTo(0, document.body.scrollHeight/2);",  # Half down
+        ]
+        
+        for i, scroll_script in enumerate(scroll_attempts):
+            self.update_status(f"📜 Scroll attempt {i+1}: Positioning viewport...")
+            self.driver.execute_script(scroll_script)
+            time.sleep(1)
+            
+            # Quick check if prompt input is now visible
+            try:
+                quick_check = self.driver.find_elements(By.XPATH, "//textarea[@id='PINHOLE_TEXT_AREA_ELEMENT_ID']")
+                if quick_check and quick_check[0].is_displayed():
+                    self.update_status(f"✅ Prompt input visible after scroll {i+1}")
+                    break
+            except:
+                pass
+
+        selectors = [
+            "//textarea[@id='PINHOLE_TEXT_AREA_ELEMENT_ID']",
+            "//textarea[contains(@placeholder, 'Tạo một video bằng văn bản')]",
+            "//textarea[contains(@placeholder, 'Nhập vào ô nhập câu lệnh')]", 
+            "//textarea[contains(@placeholder, 'prompt')]",
+            "//textarea[contains(@placeholder, 'video')]",
+            "//textarea[not(@disabled)]"
+        ]
+
+        for i, selector in enumerate(selectors):
+            try:
+                self.update_status(f"🔍 Trying selector {i+1}/{len(selectors)}...")
+                element = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, selector))
+                )
+                
+                # 🎯 ENHANCED: Verify element is truly clickable
+                if element and element.is_displayed() and element.is_enabled():
+                    # 🎯 ENHANCED: More flexible intercept detection
+                    is_clickable = self.driver.execute_script("""
+                        var elem = arguments[0];
+                        var rect = elem.getBoundingClientRect();
+                        
+                        // Check multiple points to be more flexible
+                        var points = [
+                            {x: rect.left + rect.width / 2, y: rect.top + rect.height / 2},  // Center
+                            {x: rect.left + 10, y: rect.top + 10},  // Top-left corner
+                            {x: rect.right - 10, y: rect.top + 10},  // Top-right corner
+                            {x: rect.left + 10, y: rect.bottom - 10},  // Bottom-left corner
+                            {x: rect.right - 10, y: rect.bottom - 10}  // Bottom-right corner
+                        ];
+                        
+                        for (var i = 0; i < points.length; i++) {
+                            var point = points[i];
+                            var elementAtPoint = document.elementFromPoint(point.x, point.y);
+                            
+                            // If we find the element or its child at any point, it's clickable
+                            if (elementAtPoint === elem || elem.contains(elementAtPoint) || 
+                                (elementAtPoint && elementAtPoint.tagName === 'TEXTAREA')) {
+                                return true;
+                            }
+                        }
+                        
+                        // Final check: is element in viewport and not hidden?
+                        return rect.width > 0 && rect.height > 0 && 
+                               elem.offsetParent !== null &&
+                               rect.top < window.innerHeight && rect.bottom > 0;
+                    """, element)
+                    
+                    if is_clickable:
+                        self.update_status("✅ Found accessible prompt input")
+                        return element
+                    else:
+                        self.update_status(f"⚠️ Element found but intercepted, trying next...")
+                        
+            except TimeoutException:
+                continue
+            except Exception as e:
+                self.update_status(f"⚠️ Selector {i+1} failed: {e}")
+                continue
+
+        # 🎯 FALLBACK: Aggressive prompt input detection
+        self.update_status("⚠️ All selectors failed, trying aggressive detection...")
+        
+        try:
+            # Method 1: Find any textarea and force it to be prompt input
+            all_textareas = self.driver.find_elements(By.TAG_NAME, "textarea")
+            for textarea in all_textareas:
+                if textarea.is_displayed():
+                    # Force scroll element into view and try to make it accessible
+                    self.driver.execute_script("""
+                        var elem = arguments[0];
+                        elem.scrollIntoView({behavior: 'smooth', block: 'center'});
+                        
+                        // Remove any overlaying elements
+                        var overlays = document.querySelectorAll('[style*="position: absolute"], [style*="position: fixed"]');
+                        overlays.forEach(function(overlay) {
+                            if (overlay.style.zIndex > 100) {
+                                overlay.style.display = 'none';
+                            }
+                        });
+                        
+                        // Focus the element
+                        elem.focus();
+                        elem.click();
+                    """, textarea)
+                    
+                    time.sleep(2)
+                    
+                    # Test if it's now accessible
+                    try:
+                        textarea.send_keys("")  # Test input
+                        self.update_status("✅ Found accessible textarea via aggressive method")
+                        return textarea
+                    except:
+                        continue
+                        
+        except Exception as e:
+            self.update_status(f"⚠️ Aggressive detection failed: {e}")
+        
+        # Method 2: JavaScript injection to create/find prompt input
+        try:
+            self.update_status("🔧 Final attempt: JavaScript prompt input injection...")
+            prompt_element = self.driver.execute_script("""
+                // Find any element that looks like a prompt input
+                var candidates = document.querySelectorAll('textarea, input[type="text"], [contenteditable="true"]');
+                
+                for (var i = 0; i < candidates.length; i++) {
+                    var elem = candidates[i];
+                    if (elem.offsetHeight > 0 && elem.offsetWidth > 0) {
+                        // Make sure it's visible and accessible
+                        elem.style.display = 'block';
+                        elem.style.visibility = 'visible';
+                        elem.style.position = 'relative';
+                        elem.style.zIndex = '9999';
+                        
+                        // Focus and return
+                        elem.focus();
+                        return elem;
+                    }
+                }
+                return null;
+            """)
+            
+            if prompt_element:
+                self.update_status("✅ JavaScript injection found prompt input")
+                return prompt_element
+                
+        except Exception as e:
+            self.update_status(f"⚠️ JavaScript injection failed: {e}")
+
+        self.update_status("❌ All methods exhausted - prompt input not accessible")
+        return None
+
+
+
+    def type_prompt_enhanced_with_send_verification(self, element, prompt_text, max_attempts=3):
+        """🎯 SIMPLIFIED: Single paste method for prompt input"""
+        self.update_status(f"📋 PASTE METHOD: Pasting prompt from clipboard...")
+        
+        try:
+            # Method: Simple paste using Ctrl+V
+            return self._paste_method_simple(element, prompt_text)
+            
+        except Exception as e:
+            self.update_status(f"❌ Paste method failed: {e}")
+            return False
+
+    def _paste_method_simple(self, element, prompt_text):
+        """📋 SIMPLE PASTE: Copy to clipboard and paste with Ctrl+V"""
+        import pyperclip
+        from selenium.webdriver.common.keys import Keys
+        
+        # Copy to clipboard and paste
+        pyperclip.copy(prompt_text)
+        
+        # Focus and paste
+        try:
+            element.click()
+            element.clear()
+            self.driver.execute_script("arguments[0].focus();", element)
+            time.sleep(0.2)  # Reduced delay
+        except Exception as e:
+            pass  # Continue anyway
+        
+        # Paste using Ctrl+V
+        element.send_keys(Keys.CONTROL + "v")
+        
+        # Trigger input events
+        self.driver.execute_script("""
+            var elem = arguments[0];
+            elem.dispatchEvent(new Event('input', {bubbles: true}));
+            elem.dispatchEvent(new Event('change', {bubbles: true}));
+        """, element)
+        
+        time.sleep(0.5)  # Reduced wait time
+        
+        # Wait for send button to appear
+        send_button_found = self._wait_for_send_button_appearance(timeout=5)
+        
+        if send_button_found:
+            self.update_status("✅ PASTE SUCCESSFUL - Send button appeared!")
+            return True
+        else:
+            self.update_status("⚠️ Send button not found after paste")
+            return False
+
+# Old complex methods removed - now using simple paste method only
+
+
+
+
+
+    def _wait_for_send_button_appearance(self, timeout=10):
+        """Wait for send button to appear after prompt input"""
+        # Scanning for send button (silent for speed)
+        
+        start_time = time.time()
+        
+        # Enhanced send button selectors based on user description of white arrow
+        send_button_selectors = [
+            # 🎯 WHITE ARROW BUTTON (specific from user description - "nút sent pormt hình mũi trên trắng")
+            "//button[.//*[local-name()='svg' and contains(@fill, 'white')]]",
+            "//button[.//*[local-name()='svg' and contains(@stroke, 'white')]]", 
+            "//button[.//*[local-name()='path' and contains(@fill, '#fff')]]",
+            "//button[.//*[local-name()='path' and contains(@fill, 'white')]]",
+            "//button[contains(@style, 'color: white') or contains(@style, 'color:#fff')]",
+            
+            # Arrow-specific patterns
+            "//button[contains(., 'arrow_forward')]",
+            "//button[contains(., '→')]", 
+            "//button[contains(., '▶')]",
+            "//button[contains(., '►')]",
+            "//button[.//*[contains(@d, 'M') and contains(@d, 'L')]]", # SVG path for arrows
+            
+            # Send button patterns
+            "//button[contains(@aria-label, 'Send') or contains(@aria-label, 'submit')]",
+            "//button[contains(@title, 'Send') or contains(@title, 'Gửi')]",
+            "//button[contains(@class, 'send')]",
+            
+            # Position-based (near textarea)
+            "//textarea/..//button[not(@disabled)]",
+            "//textarea/following-sibling::*//button[not(@disabled)]",
+            "//textarea/parent::*/following-sibling::*//button[not(@disabled)]",
+            
+            # Submit patterns
+            "//button[@type='submit' and not(@disabled)]",
+            "//input[@type='submit' and not(@disabled)]"
+        ]
+        
+        while time.time() - start_time < timeout:
+            for selector in send_button_selectors:
+                try:
+                    buttons = self.driver.find_elements(By.XPATH, selector)
+                    for button in buttons:
+                        if button.is_displayed() and button.is_enabled():
+                            # Additional verification - check if it's actually a send button
+                            button_text = button.get_attribute('textContent') or ''
+                            button_aria = button.get_attribute('aria-label') or ''
+                            button_title = button.get_attribute('title') or ''
+                            
+                            # Check for send-related attributes
+                            is_send_button = any(keyword in (button_text + button_aria + button_title).lower() 
+                                               for keyword in ['send', 'gửi', 'submit', 'arrow'])
+                            
+                            # 🎯 ENHANCED: Check for white arrow icon (user's specific description)
+                            has_white_icon = self.driver.execute_script("""
+                                var btn = arguments[0];
+                                
+                                // Check SVGs, paths, and icons
+                                var elements = btn.querySelectorAll('svg, path, i, span, div');
+                                for (var i = 0; i < elements.length; i++) {
+                                    var elem = elements[i];
+                                    var style = window.getComputedStyle(elem);
+                                    
+                                    // Check fill colors
+                                    if (style.fill === '#ffffff' || style.fill === 'white' || 
+                                        style.fill === '#fff' || style.fill.toLowerCase() === 'white') {
+                                        return true;
+                                    }
+                                    
+                                    // Check stroke colors (for outline arrows)
+                                    if (style.stroke === '#ffffff' || style.stroke === 'white' || 
+                                        style.stroke === '#fff' || style.stroke.toLowerCase() === 'white') {
+                                        return true;
+                                    }
+                                    
+                                    // Check text color
+                                    if (style.color === '#ffffff' || style.color === 'white' || 
+                                        style.color === '#fff' || style.color.toLowerCase() === 'white') {
+                                        return true;
+                                    }
+                                    
+                                    // Check background color (for colored arrow backgrounds)
+                                    if (style.backgroundColor === '#ffffff' || style.backgroundColor === 'white') {
+                                        return true;
+                                    }
+                                }
+                                
+                                // Check button style itself
+                                var btnStyle = window.getComputedStyle(btn);
+                                if (btnStyle.color === '#ffffff' || btnStyle.color === 'white' || 
+                                    btnStyle.fill === '#ffffff' || btnStyle.fill === 'white') {
+                                    return true;
+                                }
+                                
+                                // Check for arrow unicode characters
+                                var text = btn.textContent || btn.innerHTML || '';
+                                if (text.includes('→') || text.includes('▶') || text.includes('►') || 
+                                    text.includes('arrow_forward') || text.includes('send')) {
+                                    return true;
+                                }
+                                
+                                return false;
+                            """, button)
+                            
+                            if is_send_button or has_white_icon:
+                                self.update_status(f"✅ Found send button: {selector}")
+                                return True
+                                
+                except Exception as e:
+                    continue
+            
+            # Update status every 2 seconds with button scan info
+            elapsed = int(time.time() - start_time)
+            if elapsed % 2 == 0 and elapsed > 0:
+                # Debug: Count visible buttons
+                try:
+                    all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+                    visible_buttons = [btn for btn in all_buttons if btn.is_displayed() and btn.is_enabled()]
+                    self.update_status(f"⏳ Still waiting for send button... ({elapsed}s elapsed) - {len(visible_buttons)} buttons visible")
+                except:
+                    self.update_status(f"⏳ Still waiting for send button... ({elapsed}s elapsed)")
+            
+            time.sleep(0.5)
+        
+        # 🎯 DEBUG: If send button not found, show what buttons ARE available
+        try:
+            self.update_status("🔍 DEBUG: Send button not found, scanning all available buttons...")
+            all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+            visible_buttons = []
+            
+            for i, btn in enumerate(all_buttons):
+                if btn.is_displayed() and btn.is_enabled():
+                    btn_text = (btn.get_attribute('textContent') or '')[:30]
+                    btn_aria = (btn.get_attribute('aria-label') or '')[:20]
+                    btn_class = (btn.get_attribute('class') or '')[:20]
+                    visible_buttons.append(f"[{i}] '{btn_text}' aria='{btn_aria}' class='{btn_class}'")
+            
+            self.update_status(f"📋 Found {len(visible_buttons)} visible buttons:")
+            for btn_info in visible_buttons[:5]:  # Show first 5
+                self.update_status(f"   {btn_info}")
+                
+            if len(visible_buttons) > 5:
+                self.update_status(f"   ... and {len(visible_buttons) - 5} more buttons")
+                
+        except Exception as e:
+            self.update_status(f"⚠️ Debug scan failed: {e}")
+        
+        self.update_status("❌ Send button did not appear within timeout")
+        return False
+
+    def _clear_prompt_input(self, element):
+        """Clear prompt input completely"""
+        try:
+            self.driver.execute_script("""
+                var elem = arguments[0];
+                elem.value = '';
+                elem.innerHTML = '';
+                elem.textContent = '';
+                elem.dispatchEvent(new Event('input', {bubbles: true}));
+                elem.dispatchEvent(new Event('change', {bubbles: true}));
+            """, element)
+        except:
+            pass
+
+    def type_prompt_enhanced(self, element, prompt_text):
+        """📋 SIMPLIFIED: Redirect to paste method"""
+        return self.type_prompt_enhanced_with_send_verification(element, prompt_text)
+
+    def find_send_button(self):
+        """🎯 DIAGNOSTIC: Enhanced send button detection với comprehensive validation"""
+        self.update_status("🔍 Finding send button...")
+
+        # Skip verbose UI diagnostic for speed
+
+        # Reduced wait time for speed
+        time.sleep(1)
+
+        selectors = [
+            "//button[contains(., 'arrow_forward')]",
+            "//button[contains(., '→')]",
+            "//button[contains(., '▶')]",
+            "//button[contains(., 'send')]",
+            "//button[@type='submit'][contains(., 'arrow_forward')]",
+            "//button[@type='submit'][not(@disabled)]",
+            "//button[contains(text(), 'Tạo')]",
+            "//button[contains(text(), 'Create')]",
+            "//button[contains(text(), 'Generate')]"
+        ]
+
+        # Enhanced: Scan all buttons and score them
+        try:
+            all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+            send_candidates = []
+
+            for btn in all_buttons:
+                if btn.is_displayed() and btn.is_enabled():
+                    text = btn.text.strip()
+                    innerHTML = btn.get_attribute('innerHTML') or ''
+
+                    # Check for send-like characteristics
+                    is_send_candidate = (
+                        'arrow' in innerHTML.lower() or
+                        '→' in innerHTML or '▶' in innerHTML or
+                        'send' in text.lower() or 'tạo' in text.lower() or
+                        'create' in text.lower() or 'generate' in text.lower() or
+                        btn.get_attribute('type') == 'submit'
+                    )
+
+                    if is_send_candidate:
+                        send_candidates.append({
+                            'element': btn,
+                            'text': text,
+                            'innerHTML': innerHTML[:100],
+                            'type': btn.get_attribute('type')
+                        })
+
+            if send_candidates:
+                # Score and find best candidate
+                best_candidate = None
+                best_score = -1
+
+                for candidate in send_candidates:
+                    score = 0
+                    text = candidate['text'].lower()
+                    innerHTML = candidate['innerHTML'].lower()
+
+                    # Scoring system
+                    if 'arrow_forward' in innerHTML and 'tạo' in text:
+                        score += 100
+                    elif 'arrow_forward' in innerHTML and len(text) < 10:
+                        score += 90
+                    elif candidate['type'] == 'submit' and 'arrow' in innerHTML:
+                        score += 80
+                    elif any(word in text for word in ['tạo', 'create', 'send', 'generate']):
+                        score += 60
+
+                    # Penalties
+                    if len(text) > 20:
+                        score -= 30
+                    if any(avoid in text for avoid in ['chỉnh sửa', 'edit', 'help', 'ultra']):
+                        score -= 50
+
+                    if score > best_score:
+                        best_score = score
+                        best_candidate = candidate
+
+                if best_candidate:
+                    # 🎯 ENHANCED VALIDATION: Verify this is actually a functional send button
+                    validation_result = self._validate_send_button(best_candidate['element'])
+                    if validation_result['is_valid']:
+                        self.update_status("✅ Send button found")
+                        return best_candidate['element']
+                    else:
+                        self.update_status(f"⚠️ Best candidate failed validation (score: {best_score}) - {validation_result['reason']}")
+                        # Continue to fallback selectors
+
+        except Exception as e:
+            self.update_status(f"⚠️ Enhanced scan failed: {e}")
+
+        # Fallback to original selectors
+        for selector in selectors:
+            try:
+                element = self.wait.until(EC.element_to_be_clickable((By.XPATH, selector)))
+                if element and element.is_displayed() and element.is_enabled():
+                    self.update_status("✅ Found send button (fallback)")
+                    return element
+            except TimeoutException:
+                continue
+
+        self.update_status("❌ Send button not found")
+        return None
+
+    def wait_for_video_generation(self, timeout=None):
+        """Enhanced wait with session recovery và progressive timeout"""
+        # 🎯 USE CONFIG VALUES
+        if timeout is None:
+            timeout = self.config['video_generation_timeout']
+        
+        session_check_interval = self.config['session_check_interval']
+        
+        self.update_status("⏳ Waiting for video generation to complete...")
+
+        start_time = time.time()
+        last_session_check = time.time()
+
+        while time.time() - start_time < timeout:
+            try:
+                # 🎯 SESSION RECOVERY: Check session alive every 30s
+                current_time = time.time()
+                if current_time - last_session_check > session_check_interval:
+                    if not self.is_session_alive():
+                        self.update_status("⚠️ Session disconnected, attempting recovery...")
+                        if self.recover_session():
+                            self.update_status("✅ Session recovered successfully")
+                        else:
+                            self.update_status("❌ Session recovery failed")
+                            return False
+                    last_session_check = current_time
+
+                # Check for completion indicators
+                completion_selectors = [
+                    "//video[@src and @src!='' and (contains(@src, 'blob:') or contains(@src, 'http'))]",
+                    "//button[contains(text(), 'Tải xuống') or contains(text(), 'Download')]",
+                    "//button[contains(@aria-label, 'download') or contains(@aria-label, 'Download')]",
+                    "//*[contains(text(), 'hoàn thành') or contains(text(), 'completed')]",
+                    "//*[contains(text(), 'sẵn sàng') or contains(text(), 'ready')]",
+                    "//div[contains(@class, 'video-complete') or contains(@class, 'generation-complete')]"
+                ]
+
+                for selector in completion_selectors:
+                    elements = self.driver.find_elements(By.XPATH, selector)
+                    visible_elements = [e for e in elements if e.is_displayed()]
+
+                    if visible_elements:
+                        if "video[@src" in selector:
+                            for video_elem in visible_elements:
+                                src = video_elem.get_attribute('src')
+                                if src and len(src) > 20:
+                                    self.update_status("✅ Video generation completed!")
+                                    return True
+                        else:
+                            self.update_status("✅ Video generation completed!")
+                            return True
+
+                # Update status periodically với progressive timeouts
+                elapsed = int(time.time() - start_time)
+                if elapsed % 30 == 0:  # Update every 30s instead of 10s
+                    if elapsed < 120:
+                        self.update_status(f"⏳ Still generating... ({elapsed}s elapsed) - Normal timing")
+                    elif elapsed < 300:
+                        self.update_status(f"⏳ Still generating... ({elapsed}s elapsed) - Complex video processing")
+                    else:
+                        self.update_status(f"⏳ Still generating... ({elapsed}s elapsed) - Extended processing (max: {timeout}s)")
+
+                time.sleep(10)  # Check every 10s instead of 5s
+
+            except Exception as e:
+                error_msg = str(e)
+                if "invalid session id" in error_msg.lower() or "session deleted" in error_msg.lower():
+                    self.update_status("⚠️ Session lost during wait, attempting recovery...")
+                    if self.recover_session():
+                        self.update_status("✅ Session recovered, continuing wait...")
+                        continue
+                    else:
+                        self.update_status("❌ Session recovery failed during video wait")
+                        return False
+                else:
+                    self.update_status(f"⚠️ Error while waiting: {e}")
+                    time.sleep(10)
+
+        self.update_status(f"⏰ Timeout reached ({timeout}s). Video may still be generating.")
+        return False
+
+    def is_session_alive(self):
+        """Check if Chrome session is still alive"""
+        try:
+            # Simple check - try to get page title
+            self.driver.title
+            return True
+        except Exception as e:
+            error_msg = str(e).lower()
+            if any(keyword in error_msg for keyword in ['invalid session', 'session deleted', 'disconnected', 'no such window']):
+                return False
+            return True
+
+    def recover_session(self):
+        """Recover Chrome session sau khi bị disconnect"""
+        self.update_status("🔄 Attempting session recovery...")
+        
+        try:
+            # Try to reconnect to existing session first
+            if hasattr(self, 'driver') and self.driver:
+                try:
+                    self.driver.quit()
+                except:
+                    pass
+                
+            # Wait for cleanup with config delay
+            time.sleep(self.config['session_recovery_delay'])
+            
+            # Re-establish Chrome session directly
+            self.update_status("🔄 Creating new Chrome session...")
+            
+            # Import necessary modules
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+            
+            # Get profile path from GUI
+            profile_name = self.gui.veo_profile_var.get()
+            if not profile_name:
+                self.update_status("❌ No Veo profile selected for recovery")
+                return False
+                
+            # Setup Chrome options
+            chrome_options = Options()
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument(f"--user-data-dir={self.gui.profile_manager.get_profile_dir(profile_name)}")
+            
+            try:
+                # Create new driver
+                self.driver = webdriver.Chrome(options=chrome_options)
+                self.wait = WebDriverWait(self.driver, self.config['wait_timeout'])
+                
+                # Navigate back to Veo
+                self.update_status("🌐 Navigating back to Google Veo...")
+                self.driver.get("https://labs.google.com/veo")
+                time.sleep(5)
+                
+                # Verify we're back on the page
+                if "veo" in self.driver.current_url.lower():
+                    self.update_status("✅ Successfully recovered session and navigated to Veo")
+                    return True
+                else:
+                    self.update_status("❌ Failed to navigate to Veo after recovery")
+                    return False
+                    
+            except Exception as recovery_error:
+                self.update_status(f"❌ Failed to create new session: {recovery_error}")
+                return False
+                    
+        except Exception as e:
+            self.update_status(f"❌ Session recovery failed: {e}")
+            return False
+
+    def run_basic_workflow(self, prompt_text, progress_callback=None):
+        """Enhanced basic workflow với progress tracking và dynamic GUI values"""
+        with self._lock:
+            if self._is_running:
+                self.update_status_with_log("⚠️ Workflow already running")
+                return False
+            self._is_running = True
+
+        try:
+            # Reset video counter for new workflow
+            self.reset_video_counter()
+            self.update_status_with_log("🎬 Starting enhanced Veo workflow...")
+
+            # 🎯 GET DYNAMIC VALUES FROM GUI
+            selected_model = self.gui.model_var.get()
+            selected_count = int(self.gui.video_count_var.get() or "1")
+
+            # Map GUI model selection to automation parameter
+            model_type = "fast" if "Fast" in selected_model else "quality"
+
+            self.update_status_with_log(f"📋 Using Model: {selected_model}, Count: {selected_count}")
+
+            # Define complete workflow steps với DYNAMIC VALUES
+            workflow_steps = [
+                ("Find New Project Button", lambda: self.find_new_project_button()),
+                ("Click New Project", lambda: self.safe_click(self.current_element, "New Project Button")),
+                ("Find Project Type Dropdown", lambda: self.find_project_type_dropdown()),
+                ("Click Project Type Dropdown", lambda: self.safe_click(self.current_element, "Project Type Dropdown")),
+                ("Select Text to Video", lambda: self.select_project_type_option("Từ văn bản sang video")),
+                ("Close Dropdown After Selection", lambda: self.close_dropdown_if_open()),
+                ("Find Settings Button", lambda: self.find_settings_button()),
+                ("Click Settings Button", lambda: self.safe_click(self.current_element, "Settings Button")),
+                ("Find Model Dropdown", lambda: self.find_model_dropdown()),
+                ("Click Model Dropdown", lambda: self.click_model_dropdown_enhanced()),
+                ("Select Model", lambda: self.select_model_option(model_type)),  # 🎯 DYNAMIC
+                ("Find Output Count Dropdown", lambda: self.find_output_count_dropdown()),
+                ("Click Output Count Dropdown", lambda: self.safe_click(self.current_element, "Output Count Dropdown")),
+                ("Select Output Count", lambda: self.select_output_count(selected_count)),  # 🎯 DYNAMIC
+                ("Find Aspect Ratio Dropdown", lambda: self.find_aspect_ratio_dropdown()),
+                ("Click Aspect Ratio Dropdown", lambda: self.safe_click(self.current_element, "Aspect Ratio Dropdown") if self.current_element else True),
+                ("Select Aspect Ratio", lambda: self.select_aspect_ratio()),
+                ("Close Settings Popup", lambda: self.close_settings_popup()),
+                ("Find Prompt Input", lambda: self.find_prompt_input()),
+                ("Type Prompt", lambda: self.type_prompt_enhanced(self.current_element, prompt_text)),
+                ("Find Send Button", lambda: self.find_send_button()),
+                ("Click Send Button", lambda: self.safe_click_send_button(self.current_element)),
+                ("Wait for Video Generation", lambda: self.wait_for_video_generation()),
+                ("Find Generated Videos", lambda: self.find_generated_videos_with_retry(only_new=True)),
+                ("Download Videos", lambda: self._download_all_found_videos())
+            ]
+
+            # Initialize progress tracker
+            if progress_callback:
+                self.progress_tracker = ProgressTracker(len(workflow_steps), progress_callback)
+
+            # Execute steps với progress tracking
+            for step_name, step_func in workflow_steps:
+                self.update_status_with_log(f"🔄 {step_name}...")
+
+                try:
+                    result = step_func()
+
+                    if step_name.startswith("Find"):
+                        if step_name == "Find Generated Videos":
+                            # Special handling for video detection
+                            if not result or len(result) == 0:
+                                self.update_status_with_log(f"⚠️ {step_name} - No videos found (this may be normal)")
+                                if self.progress_tracker:
+                                    self.progress_tracker.update(step_name, success=False, details="No videos found")
+                                # Don't return False - continue workflow
+                            else:
+                                self.update_status_with_log(f"✅ {step_name} - Found {len(result)} videos")
+                                if self.progress_tracker:
+                                    self.progress_tracker.update(step_name, success=True, details=f"Found {len(result)} videos")
+                        else:
+                            # Regular Find steps
+                            if not result:
+                                self.update_status_with_log(f"❌ {step_name} - Failed")
+                                if self.progress_tracker:
+                                    self.progress_tracker.update(step_name, success=False, details="Element not found")
+                                return False
+                            else:
+                                self.current_element = result
+                                self.update_status_with_log(f"✅ {step_name} - Success")
+                                if self.progress_tracker:
+                                    self.progress_tracker.update(step_name, success=True, details="Element found")
+                    else:
+                        if not result:
+                            self.update_status_with_log(f"❌ {step_name} - Failed")
+                            if self.progress_tracker:
+                                self.progress_tracker.update(step_name, success=False, details="Action failed")
+                            return False
+                        else:
+                            self.update_status_with_log(f"✅ {step_name} - Success")
+                            if self.progress_tracker:
+                                self.progress_tracker.update(step_name, success=True, details="Action completed")
+
+                except Exception as e:
+                    self.update_status_with_log(f"❌ {step_name} - Error: {e}")
+                    if self.progress_tracker:
+                        self.progress_tracker.update(step_name, success=False, details=str(e))
+                    return False
+
+            self.update_status_with_log("🎉 Complete workflow with video download finished!")
+            return True
+
+        except Exception as e:
+            self.update_status(f"❌ Workflow failed: {e}")
+            return False
+        finally:
+            with self._lock:
+                self._is_running = False
+
+    def _download_all_found_videos(self):
+        """Download all videos found in the last scan"""
+        if not hasattr(self, '_last_found_videos') or not self._last_found_videos:
+            self.update_status("❌ No videos found to download")
+            return False
+
+        downloaded_count = 0
+        for i, video in enumerate(self._last_found_videos):
+            self.update_status(f"📥 Downloading video {i+1}/{len(self._last_found_videos)}...")
+
+            # 🎯 DYNAMIC DOWNLOAD DIR: Use workflow subfolder
+            workflow_download_dir = self.get_workflow_download_dir()
+            result = self.download_video_with_retry(video, download_dir=workflow_download_dir)
+            if result:
+                downloaded_count += 1
+
+        if downloaded_count > 0:
+            self.update_status(f"✅ Successfully downloaded {downloaded_count}/{len(self._last_found_videos)} videos")
+            return True
+        else:
+            self.update_status("❌ No videos were successfully downloaded")
+            return False
+
+    def run_quick_batch_workflow(self, prompt_text, progress_callback=None):
+        """⚡ Quick workflow for batch processing (skip initial setup)"""
+        with self._lock:
+            if self._is_running:
+                self.update_status_with_log("⚠️ Workflow already running")
+                return False
+            self._is_running = True
+
+        try:
+            self.update_status_with_log("⚡ Starting quick batch workflow...")
+
+            # Quick workflow steps (skip setup, go straight to prompt input)
+            quick_steps = [
+                ("Clear and Type New Prompt", lambda: self.clear_and_type_prompt_enhanced(prompt_text)),
+                ("Find Send Button", lambda: self.find_send_button()),
+                ("Click Send Button", lambda: self.safe_click_send_button(self.current_element)),
+                ("Wait for Video Generation", lambda: self.wait_for_video_generation()),
+                ("Find Generated Videos", lambda: self.find_generated_videos_with_retry(only_new=True)),
+                ("Download Videos", lambda: self._download_all_found_videos())
+            ]
+
+            # Initialize progress tracker
+            if progress_callback:
+                self.progress_tracker = ProgressTracker(len(quick_steps), progress_callback)
+
+            # Execute quick steps
+            for step_name, step_func in quick_steps:
+                self.update_status_with_log(f"🔄 {step_name}...")
+
+                try:
+                    result = step_func()
+
+                    if step_name == "Find Generated Videos":
+                        # Special handling for video detection
+                        if not result or len(result) == 0:
+                            self.update_status_with_log(f"⚠️ {step_name} - No videos found (this may be normal)")
+                            if self.progress_tracker:
+                                self.progress_tracker.update(step_name, success=False, details="No videos found")
+                        else:
+                            self.update_status_with_log(f"✅ {step_name} - Found {len(result)} videos")
+                            if self.progress_tracker:
+                                self.progress_tracker.update(step_name, success=True, details=f"Found {len(result)} videos")
+                    elif step_name.startswith("Find"):
+                        if not result:
+                            self.update_status_with_log(f"❌ {step_name} - Failed")
+                            if self.progress_tracker:
+                                self.progress_tracker.update(step_name, success=False, details="Element not found")
+                            return False
+                        else:
+                            self.current_element = result
+                            self.update_status_with_log(f"✅ {step_name} - Success")
+                            if self.progress_tracker:
+                                self.progress_tracker.update(step_name, success=True, details="Element found")
+                    else:
+                        if not result:
+                            self.update_status_with_log(f"❌ {step_name} - Failed")
+                            if self.progress_tracker:
+                                self.progress_tracker.update(step_name, success=False, details="Action failed")
+                            return False
+                        else:
+                            self.update_status_with_log(f"✅ {step_name} - Success")
+                            if self.progress_tracker:
+                                self.progress_tracker.update(step_name, success=True, details="Action completed")
+
+                except Exception as e:
+                    error_msg = str(e).lower()
+                    # 🎯 SESSION RECOVERY: Handle session errors during workflow
+                    if any(keyword in error_msg for keyword in ['invalid session', 'session deleted', 'disconnected']):
+                        self.update_status_with_log(f"⚠️ Session error in {step_name}, attempting recovery...")
+                        if self.recover_session():
+                            self.update_status_with_log(f"✅ Session recovered, retrying {step_name}...")
+                            try:
+                                # Retry the step after recovery
+                                result = step_func()
+                                if result:
+                                    self.update_status_with_log(f"✅ {step_name} - Success after recovery")
+                                    if self.progress_tracker:
+                                        self.progress_tracker.update(step_name, success=True, details="Success after session recovery")
+                                    continue
+                            except:
+                                pass
+                        
+                    self.update_status_with_log(f"❌ {step_name} - Error: {e}")
+                    if self.progress_tracker:
+                        self.progress_tracker.update(step_name, success=False, details=str(e))
+                    return False
+
+            self.update_status_with_log("🎉 Quick batch workflow completed!")
+            return True
+
+        except Exception as e:
+            self.update_status_with_log(f"❌ Quick workflow failed: {e}")
+            return False
+        finally:
+            with self._lock:
+                self._is_running = False
+
+    def clear_and_type_prompt_enhanced(self, prompt_text):
+        """📋 SIMPLIFIED: Clear and paste prompt using clipboard"""
+        self.update_status(f"📋 Pasting prompt: {prompt_text[:50]}...")
+
+        # Find prompt input
+        prompt_input = self.find_prompt_input()
+        if not prompt_input:
+            self.update_status("❌ Cannot find prompt input")
+            return False
+
+        # Use simple paste method
+        return self.type_prompt_enhanced(prompt_input, prompt_text)
+
+
+    def get_workflow_download_dir(self):
+        """🎯 Get download directory with workflow subfolder"""
+        try:
+            # Get download folder from GUI
+            download_folder = self.gui.download_folder.get().strip()
+            if not download_folder:
+                download_folder = "output"  # Fallback
+
+            # Get workflow name for subfolder
+            workflow_name = self.gui.workflow_name.get().strip()
+            if not workflow_name or workflow_name == "(No workflow selected)":
+                workflow_name = "default_workflow"
+
+            # Clean workflow name for folder (remove invalid chars)
+            import re
+            clean_name = re.sub(r'[<>:"/\\|?*]', '_', workflow_name)
+
+            # Create full path: download_folder/workflow_name
+            full_path = os.path.join(download_folder, clean_name)
+
+            # Create directory if not exists
+            os.makedirs(full_path, exist_ok=True)
+
+            self.update_status(f"📁 Videos will be saved to: {full_path}")
+            return full_path
+
+        except Exception as e:
+            self.update_status(f"⚠️ Error getting download dir: {e}")
+            return "output"  # Fallback
+
+    def add_downloaded_video(self, video_url):
+        """Thread-safe video tracking"""
+        with self._video_lock:
+            self.downloaded_videos.add(video_url)
+            self.current_session_videos.add(video_url)
+
+    def is_video_downloaded(self, video_url):
+        """Check if video already downloaded"""
+        with self._video_lock:
+            return video_url in self.downloaded_videos
+
+    def get_session_video_count(self):
+        """Get current session video count"""
+        with self._video_lock:
+            return len(self.current_session_videos)
+
+    def reset_video_counter(self):
+        """Reset video counter for new workflow"""
+        with self._video_lock:
+            self.video_counter = 0
+        self.update_status_with_log("🔄 Video counter reset for new workflow")
+
+    def find_generated_videos_with_retry(self, only_new=True, prompt_index=None):
+        """Find generated videos with retry mechanism - ENHANCED for GUI"""
+        self.update_status("🔍 Starting video detection with retry...")
+
+        for attempt in range(1, self.config['video_detection_retries'] + 1):
+            self.update_status(f"🔍 Video detection attempt {attempt}/{self.config['video_detection_retries']}")
+
+            try:
+                videos = self.find_generated_videos(only_new, prompt_index)
+
+                if videos:
+                    self.update_status(f"✅ Found {len(videos)} videos on attempt {attempt}")
+                    self._last_found_videos = videos  # Store for download step
+                    return videos
+                else:
+                    self.update_status(f"⚠️ No videos found on attempt {attempt}")
+                    if attempt < self.config['video_detection_retries']:
+                        self.update_status(f"⏳ Waiting {self.config['retry_delay']}s before retry...")
+                        time.sleep(self.config['retry_delay'])
+
+            except Exception as e:
+                self.update_status(f"❌ Video detection attempt {attempt} failed: {e}")
+                if attempt < self.config['video_detection_retries']:
+                    time.sleep(self.config['retry_delay'])
+
+        self.update_status("❌ Video detection failed after all retries")
+        return []
+
+    def find_generated_videos(self, only_new=True, prompt_index=None):
+        """Find all generated videos on the page - ENHANCED for GUI"""
+        self.update_status("🔍 Scanning for generated videos...")
+
+        # Enhanced selectors specific to Google Veo interface
+        video_selectors = [
+            # Video elements with src (primary)
+            "//video[@src and @src!='']",
+            "//video[contains(@src, 'blob:') or contains(@src, 'http')]",
+
+            # Google Veo specific video containers
+            "//*[contains(@class, 'video')]//video[@src]",
+            "//*[contains(@class, 'preview')]//video[@src]",
+            "//*[contains(@class, 'player')]//video[@src]",
+            "//*[contains(@class, 'result')]//video[@src]",
+            "//*[contains(@class, 'generated')]//video[@src]",
+
+            # Download buttons and links (Google Veo style)
+            "//button[contains(@aria-label, 'download') or contains(@aria-label, 'Download')]",
+            "//button[contains(text(), 'Tải xuống') or contains(text(), 'Download')]",
+            "//a[contains(@href, '.mp4') or contains(@href, '.webm') or contains(@href, '.mov')]",
+            "//a[contains(@download, '.mp4') or contains(@download, '.webm')]",
+
+            # Video thumbnails and data attributes
+            "//*[@data-video-url and @data-video-url!='']",
+            "//*[@data-src and contains(@data-src, 'video')]",
+            "//*[@data-video-src]",
+
+            # Google specific video elements
+            "//div[contains(@class, 'video')]//video",
+            "//div[contains(@role, 'video')]//video",
+            "//*[contains(@class, 'media')]//video[@src]"
+        ]
+
+        found_videos = []
+        current_scan_time = time.time()
+
+        # Enhanced video detection with multiple methods
+        for selector in video_selectors:
+            try:
+                elements = self.driver.find_elements(By.XPATH, selector)
+                for element in elements:
+                    if element.is_displayed():
+                        # Get video URL using multiple methods
+                        video_url = None
+                        video_type = "unknown"
+
+                        if element.tag_name == 'video':
+                            video_url = element.get_attribute('src')
+                            video_type = "video_element"
+                        elif element.tag_name == 'a':
+                            video_url = element.get_attribute('href') or element.get_attribute('download')
+                            video_type = "download_link"
+                        elif element.tag_name == 'button':
+                            # For download buttons, try to find associated video
+                            try:
+                                # Look for nearby video elements
+                                nearby_videos = element.find_elements(By.XPATH, ".//video[@src] | ./preceding::video[@src][1] | ./following::video[@src][1]")
+                                if nearby_videos:
+                                    video_url = nearby_videos[0].get_attribute('src')
+                                    video_type = "button_associated"
+                            except:
+                                pass
+                        else:
+                            # Try data attributes
+                            video_url = (element.get_attribute('data-video-url') or
+                                       element.get_attribute('data-src') or
+                                       element.get_attribute('data-video-src'))
+                            video_type = "data_attribute"
+
+                        # Validate video URL
+                        if video_url and self._is_valid_video_url(video_url):
+                            # ENHANCED DEDUPLICATION - Check global tracking
+                            is_duplicate = (
+                                # Already in current scan
+                                any(v['url'] == video_url for v in found_videos) or
+                                # Already downloaded in this session (if only_new=True)
+                                (only_new and video_url in self.downloaded_videos) or
+                                # Already in current session videos
+                                (only_new and video_url in self.current_session_videos)
+                            )
+
+                            if not is_duplicate:
+                                found_videos.append({
+                                    'element': element,
+                                    'url': video_url,
+                                    'selector': selector,
+                                    'type': video_type,
+                                    'tag': element.tag_name,
+                                    'scan_time': current_scan_time
+                                })
+                                # Track this video in current session
+                                with self._video_lock:
+                                    self.current_session_videos.add(video_url)
+
+            except Exception as e:
+                self.update_status(f"⚠️ Error with selector {selector}: {e}")
+
+        # Enhanced logging
+        self.update_status(f"📋 Found {len(found_videos)} unique video(s)")
+        for i, video in enumerate(found_videos):
+            self.update_status(f"   [{i}] Type: {video['type']}, Tag: {video['tag']}")
+            self.update_status(f"       URL: {video['url'][:80]}...")
+
+        return found_videos
+
+    def _is_valid_video_url(self, url):
+        """Check if URL is a valid video URL"""
+        if not url or len(url) < 10:
+            return False
+
+        # Check for valid video URL patterns
+        valid_patterns = [
+            'blob:', 'http://', 'https://',
+            '.mp4', '.webm', '.mov', '.avi',
+            'video/', 'media/'
+        ]
+
+        url_lower = url.lower()
+        return any(pattern in url_lower for pattern in valid_patterns)
+
+    def download_video_with_retry(self, video_info, download_dir="output", prompt_index=None):
+        """Download video with retry mechanism - ENHANCED for GUI"""
+        video_url = video_info['url']
+
+        # CHECK IF ALREADY DOWNLOADED
+        if video_url in self.downloaded_videos:
+            self.update_status(f"⏭️ Skipping duplicate video: {video_url[:60]}...")
+            return None
+
+        for attempt in range(1, self.config['download_retry_attempts'] + 1):
+            self.update_status(f"📥 Download attempt {attempt}/{self.config['download_retry_attempts']}")
+
+            try:
+                result = self.download_video(video_info, download_dir, prompt_index)
+                if result:
+                    self.update_status(f"✅ Download successful on attempt {attempt}")
+                    return result
+                else:
+                    self.update_status(f"⚠️ Download failed on attempt {attempt}")
+
+            except Exception as e:
+                self.update_status(f"❌ Download attempt {attempt} failed: {e}")
+
+            if attempt < self.config['download_retry_attempts']:
+                self.update_status(f"⏳ Waiting {self.config['retry_delay']}s before retry...")
+                time.sleep(self.config['retry_delay'])
+
+        self.update_status("❌ Download failed after all retries")
+        return None
+
+    def download_video(self, video_info, download_dir="output", prompt_index=None):
+        """Download video to specified directory - ENHANCED for GUI"""
+        video_url = video_info['url']
+        video_type = video_info.get('type', 'unknown')
+
+        # CHECK IF ALREADY DOWNLOADED
+        if video_url in self.downloaded_videos:
+            self.update_status(f"⏭️ Skipping duplicate video: {video_url[:60]}...")
+            return None
+
+        self.update_status(f"📥 Downloading video ({video_type}) from: {video_url[:80]}...")
+
+        try:
+            # Create download directory
+            os.makedirs(download_dir, exist_ok=True)
+
+            # Generate filename with sequential naming (1_1, 1_2, 1_3...)
+            with self._video_lock:
+                self.video_counter += 1
+                current_number = self.video_counter
+            
+            video_extension = self._get_video_extension(video_url)
+            filename = f"1_{current_number}{video_extension}"
+            filepath = os.path.join(download_dir, filename)
+
+            # Handle different video URL types
+            success_filepath = None
+            if video_url.startswith('blob:'):
+                success_filepath = self._download_blob_video(video_info, filepath)
+            else:
+                success_filepath = self._download_http_video(video_info, filepath)
+
+            # Track successful download
+            if success_filepath:
+                with self._video_lock:
+                    self.downloaded_videos.add(video_url)
+                self.update_status(f"✅ Downloaded and tracked: {success_filepath}")
+
+            return success_filepath
+
+        except Exception as e:
+            self.update_status(f"❌ Download failed: {e}")
+            return None
+
+    def _get_video_extension(self, url):
+        """Get appropriate video file extension"""
+        url_lower = url.lower()
+        if '.mp4' in url_lower:
+            return '.mp4'
+        elif '.webm' in url_lower:
+            return '.webm'
+        elif '.mov' in url_lower:
+            return '.mov'
+        else:
+            return '.mp4'  # Default
+
+    def _download_blob_video(self, video_info, filepath):
+        """Download blob: video using browser automation - SIMPLIFIED for GUI"""
+        self.update_status("🔄 Downloading blob video using browser automation...")
+
+        try:
+            # For GUI, we'll use a simpler approach - try to trigger download via button
+            return self._try_download_via_button(video_info, filepath)
+        except Exception as e:
+            self.update_status(f"❌ Blob download failed: {e}")
+            return None
+
+    def _download_http_video(self, video_info, filepath):
+        """Download HTTP video using requests - MEMORY SAFE"""
+        video_url = video_info['url']
+        self.update_status("🔄 Starting HTTP download...")
+
+        try:
+            import requests
+            import gc
+
+            # Enhanced headers to mimic browser
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5',
+                'Accept-Encoding': 'identity;q=1, *;q=0',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Range': 'bytes=0-'
+            }
+
+            response = None
+            try:
+                response = requests.get(video_url, headers=headers, stream=True, timeout=30)
+                response.raise_for_status()
+
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded = 0
+                chunk_size = 4096  # Smaller chunk size for better memory management
+
+                with open(filepath, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=chunk_size):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            
+                            # Force flush to disk periodically
+                            if downloaded % (chunk_size * 100) == 0:
+                                f.flush()
+                                os.fsync(f.fileno())  # Force write to disk
+                                gc.collect()  # Force garbage collection
+                                self._check_memory_usage()  # Monitor memory
+
+                            if total_size > 0:
+                                percent = (downloaded / total_size) * 100
+                                if downloaded % (chunk_size * 50) == 0:  # Less frequent updates
+                                    self.update_status(f"📥 Progress: {percent:.1f}% ({downloaded}/{total_size} bytes)")
+
+                self.update_status(f"✅ HTTP video downloaded successfully!")
+                self.update_status(f"📁 File: {filepath}")
+                self.update_status(f"📊 Size: {downloaded} bytes")
+
+                return filepath
+
+            finally:
+                # Ensure response is properly closed
+                if response:
+                    response.close()
+                # Force garbage collection
+                gc.collect()
+
+        except Exception as e:
+            self.update_status(f"❌ HTTP download failed: {e}")
+            # Force cleanup before fallback
+            import gc
+            gc.collect()
+            # Fallback: try to trigger download via button click
+            return self._try_download_via_button(video_info, filepath)
+
+    def _try_download_via_button(self, video_info, filepath):
+        """Try to download by clicking download button"""
+        self.update_status("🔄 Trying download via button click...")
+
+        try:
+            # Look for download buttons
+            download_buttons = self.driver.find_elements(By.XPATH,
+                "//button[contains(text(), 'Tải xuống') or contains(text(), 'Download') or contains(@aria-label, 'download')]")
+
+            for btn in download_buttons:
+                if btn.is_displayed() and btn.is_enabled():
+                    self.update_status(f"🖱️ Clicking download button: {btn.text[:30]}...")
+                    btn.click()
+                    time.sleep(3)  # Wait for download to start
+
+                    # Check if download started (this is browser-dependent)
+                    self.update_status("✅ Download button clicked - check your Downloads folder")
+                    return "download_triggered"
+
+            self.update_status("❌ No download buttons found")
+            return None
+
+        except Exception as e:
+            self.update_status(f"❌ Button download failed: {e}")
+            return None
+
+    def find_project_type_dropdown(self):
+        """Tìm dropdown chọn loại dự án"""
+        self.update_status("🔍 Finding Project Type dropdown...")
+
+        selectors = [
+            "//button[contains(text(), 'Từ văn bản sang video')]",
+            "//button[contains(text(), 'Text to Video')]",
+            "//button[contains(., 'arrow_drop_down') and contains(text(), 'văn bản')]",
+            "//button[contains(., 'arrow_drop_down') and contains(text(), 'video')]",
+            "//button[contains(text(), 'video') and contains(., 'arrow_drop_down')]",
+            "//button[contains(@class, 'dropdown') and contains(text(), 'video')]"
+        ]
+
+        for selector in selectors:
+            try:
+                element = WebDriverWait(self.driver, self.config['wait_timeout']).until(
+                    EC.element_to_be_clickable((By.XPATH, selector))
+                )
+                if element and element.is_displayed():
+                    self.update_status(f"✅ Found Project Type dropdown")
+                    return element
+            except:
+                continue
+
+        self.update_status("❌ Project Type dropdown not found")
+        return None
+
+    def select_project_type_option(self, target_option="Từ văn bản sang video"):
+        """Chọn option trong Project Type dropdown"""
+        self.update_status(f"🎯 Selecting project type: {target_option}")
+
+        # Wait for dropdown options
+        time.sleep(2)
+
+        option_selectors = [
+            f"//div[normalize-space(text())='{target_option}']",
+            f"//button[normalize-space(text())='{target_option}']",
+            f"//li[normalize-space(text())='{target_option}']",
+            f"//*[contains(text(), '{target_option}')]",
+            f"//*[contains(text(), 'Từ văn bản sang video')]",
+            f"//*[contains(text(), 'Text to Video')]",
+            f"//*[@role='option'][contains(text(), 'văn bản')]",
+            f"//*[@role='menuitem'][contains(text(), 'văn bản')]"
+        ]
+
+        for selector in option_selectors:
+            try:
+                elements = self.driver.find_elements(By.XPATH, selector)
+                for element in elements:
+                    if element.is_displayed():
+                        if self.safe_click(element, f"Project Type Option: {target_option}"):
+                            time.sleep(2)
+                            return True
+            except Exception as e:
+                continue
+
+        # Fallback to keyboard navigation
+        try:
+            body = self.driver.find_element(By.TAG_NAME, "body")
+            body.send_keys(Keys.ARROW_DOWN)
+            time.sleep(1)
+            body.send_keys(Keys.ENTER)
+            time.sleep(2)
+            self.update_status("✅ Keyboard navigation successful")
+            return True
+        except Exception as e:
+            self.update_status(f"❌ All methods failed for project type: {target_option}")
+            return False
+
+    def close_dropdown_if_open(self):
+        """Đóng dropdown nếu đang mở"""
+        try:
+            body = self.driver.find_element(By.TAG_NAME, "body")
+            body.send_keys(Keys.ESCAPE)
+            time.sleep(1)
+            self.update_status("🔄 Closed any open dropdowns")
+            return True
+        except:
+            return True
+
+    def find_settings_button(self):
+        """Tìm nút Settings để mở popup chứa model dropdown"""
+        self.update_status("🔍 Finding Settings button...")
+
+        selectors = [
+            "//button[contains(., 'tune')]",
+            "//button[contains(text(), 'Cài đặt')]",
+            "//button[contains(text(), 'Settings')]",
+            "//button[contains(., 'settings')]",
+            "//button[contains(@aria-label, 'Settings')]",
+            "//button[contains(@aria-label, 'settings')]",
+            "//button[contains(@title, 'Settings')]",
+            "//button[contains(., '⚙')]",
+            "//header//button[last()]",
+            "//nav//button[last()]"
+        ]
+
+        for selector in selectors:
+            try:
+                element = WebDriverWait(self.driver, self.config['wait_timeout']).until(
+                    EC.element_to_be_clickable((By.XPATH, selector))
+                )
+                if element and element.is_displayed():
+                    self.update_status(f"✅ Found Settings button")
+                    return element
+            except:
+                continue
+
+        self.update_status("❌ Settings button not found")
+        return None
+
+    def find_model_dropdown(self):
+        """Tìm dropdown model trong settings popup - ENHANCED"""
+        self.update_status("🔍 Finding Model dropdown in settings popup...")
+
+        # ENHANCED: Longer wait for popup to fully load
+        self.update_status("⏳ Waiting for popup to fully load...")
+        time.sleep(4)
+
+        selectors = [
+            # Based on screenshot - "Mô hình" label with Veo 3 dropdown
+            "//div[contains(text(), 'Mô hình')]/following-sibling::*//button",
+            "//div[contains(text(), 'Mô hình')]/..//button[contains(text(), 'Veo')]",
+            "//button[contains(text(), 'Veo 3 - Quality')]",
+            "//button[contains(text(), 'Veo 3 - Fast')]",
+            "//button[contains(text(), 'Mô hình') and contains(text(), 'Veo')]",
+
+            # ENHANCED: More generic patterns
+            "//button[contains(text(), 'Veo 3')]",
+            "//button[contains(text(), 'Veo')]",
+            "//button[contains(text(), 'Quality')]",
+            "//button[contains(text(), 'Fast')]",
+
+            # Generic model dropdown patterns in popup
+            "//div[contains(@class, 'popup')]//button[contains(text(), 'Veo')]",
+            "//div[contains(@class, 'modal')]//button[contains(text(), 'Veo')]",
+            "//div[contains(@class, 'dialog')]//button[contains(text(), 'Veo')]",
+
+            # Fallback: any button with Veo in popup context
+            "//*[contains(@class, 'popup')]//*[contains(text(), 'Veo')]/ancestor-or-self::button",
+            "//*[contains(@class, 'modal')]//*[contains(text(), 'Veo')]/ancestor-or-self::button"
+        ]
+
+        # ENHANCED: Debug all visible buttons in current state
+        self.update_status("🔍 DEBUG: Scanning all visible buttons after settings click...")
+        try:
+            all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+            relevant_buttons = []
+
+            for i, btn in enumerate(all_buttons):
+                if btn.is_displayed() and btn.text:
+                    text = btn.text.lower()
+                    if any(keyword in text for keyword in ['veo', 'quality', 'fast', 'mô hình', 'model']):
+                        relevant_buttons.append({
+                            'index': i,
+                            'text': btn.text,
+                            'element': btn
+                        })
+
+            self.update_status(f"📋 Found {len(relevant_buttons)} relevant buttons:")
+            for btn_info in relevant_buttons[:10]:  # Show first 10
+                self.update_status(f"   [{btn_info['index']}] '{btn_info['text']}'")
+
+            # Try clicking the most promising one
+            if relevant_buttons:
+                # Prioritize button with "Mô hình" and dropdown indicator
+                for btn_info in relevant_buttons:
+                    text_lower = btn_info['text'].lower()
+                    if 'mô hình' in text_lower and any(indicator in btn_info['text'] for indicator in ['arrow_drop_down', '▼', 'dropdown']):
+                        self.update_status(f"✅ Using dropdown button with 'Mô hình': '{btn_info['text'][:50]}...'")
+                        return btn_info['element']
+
+                # Fallback to first relevant button
+                best_btn = relevant_buttons[0]
+                self.update_status(f"✅ Using fallback button: '{best_btn['text'][:50]}...'")
+                return best_btn['element']
+
+        except Exception as e:
+            self.update_status(f"   Debug scan failed: {e}")
+
+        # Original selector approach
+        for selector in selectors:
+            try:
+                element = WebDriverWait(self.driver, self.config['wait_timeout']).until(
+                    EC.element_to_be_clickable((By.XPATH, selector))
+                )
+                if element and element.is_displayed():
+                    self.update_status(f"✅ Found Model dropdown in popup: {element.text[:50]}...")
+                    return element
+            except:
+                continue
+
+        self.update_status("❌ Model dropdown not found in popup")
+        return None
+
+    def click_model_dropdown_enhanced(self):
+        """Enhanced model dropdown clicking với forced opening"""
+        if not self.current_element:
+            self.update_status("❌ No model dropdown element found")
+            return False
+
+        self.update_status("🔧 Enhanced model dropdown click...")
+
+        # Initial click
+        success = self.safe_click(self.current_element, "Model Dropdown")
+        if not success:
+            return False
+
+        # Multiple click attempts to force dropdown open
+        try:
+            for click_type in ["regular", "javascript", "actions"]:
+                try:
+                    if click_type == "regular":
+                        self.current_element.click()
+                    elif click_type == "javascript":
+                        self.driver.execute_script("arguments[0].click();", self.current_element)
+                    elif click_type == "actions":
+                        ActionChains(self.driver).click(self.current_element).perform()
+                    time.sleep(1)
+                except:
+                    continue
+        except:
+            pass
+
+        return True
+
+    def select_model_option(self, model_type="fast"):
+        """Chọn model (fast/quality) với enhanced logic cho tất cả Veo models"""
+        # 🎯 ENHANCED MODEL MAPPING từ GUI selection
+        selected_model = self.gui.model_var.get()
+
+        if selected_model == "Veo 3 Quality":
+            target_text = "Veo 3 - Quality"
+        elif selected_model == "Veo 3 Fast":
+            target_text = "Veo 3 - Fast"
+        elif selected_model == "Veo 2 Quality":
+            target_text = "Veo 2 - Quality"
+        elif selected_model == "Veo 2 Fast":
+            target_text = "Veo 2 - Fast"
+        else:
+            # Fallback to parameter-based selection for backward compatibility
+            target_text = "Veo 3 - Fast" if model_type.lower() == "fast" else "Veo 3 - Quality"
+
+        self.update_status(f"🎯 Selecting model: {target_text} (from GUI: {selected_model})")
+
+        # Wait for options to load
+        time.sleep(3)
+
+        option_selectors = [
+            f"//div[normalize-space(text())='{target_text}']",
+            f"//span[normalize-space(text())='{target_text}']",
+            f"//label[normalize-space(text())='{target_text}']",
+            f"//*[contains(text(), '{target_text}')]",
+            f"//*[@role='option'][contains(text(), '{model_type}')]",
+            f"//*[@role='menuitem'][contains(text(), '{model_type}')]"
+        ]
+
+        for selector in option_selectors:
+            try:
+                elements = self.driver.find_elements(By.XPATH, selector)
+                for element in elements:
+                    if element.is_displayed() and element.is_enabled():
+                        if self.safe_click(element, f"Model Option: {target_text}"):
+                            return True
+            except:
+                continue
+
+        # Keyboard fallback
+        try:
+            body = self.driver.find_element(By.TAG_NAME, "body")
+            body.send_keys(Keys.ARROW_DOWN)
+            time.sleep(0.5)
+            body.send_keys(Keys.ENTER)
+            time.sleep(2)
+            self.update_status("✅ Keyboard navigation successful")
+            return True
+        except:
+            self.update_status(f"❌ All methods failed for model: {target_text}")
+            return False
+
+    def find_output_count_dropdown(self):
+        """Tìm dropdown chọn số lượng video trong settings popup - ENHANCED"""
+        self.update_status("🔍 Finding Output Count dropdown in settings popup...")
+
+        selectors = [
+            # Based on screenshot - "Câu trả lời đầu ra cho mỗi câu lệnh" dropdown
+            "//button[contains(text(), 'Câu trả lời đầu ra cho mỗi câu lệnh')]",
+            "//button[contains(text(), 'Câu trả lời đầu ra')]",
+            "//button[contains(text(), 'câu lệnh') and contains(., 'arrow_drop_down')]",
+
+            # ENHANCED: More generic patterns
+            "//button[contains(text(), 'Câu trả lời')]",
+            "//button[contains(text(), 'đầu ra')]",
+
+            # In popup context
+            "//div[contains(@class, 'popup')]//button[contains(text(), 'Câu trả lời')]",
+            "//div[contains(@class, 'modal')]//button[contains(text(), 'Câu trả lời')]",
+            "//div[contains(@class, 'dialog')]//button[contains(text(), 'Câu trả lời')]",
+
+            # Number-based patterns in popup
+            "//*[contains(@class, 'popup')]//*[contains(text(), 'đầu ra')]/ancestor-or-self::button",
+            "//*[contains(@class, 'modal')]//*[contains(text(), 'đầu ra')]/ancestor-or-self::button"
+        ]
+
+        # ENHANCED: Debug scan for output count buttons
+        self.update_status("🔍 DEBUG: Scanning for output count buttons...")
+        try:
+            all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+            relevant_buttons = []
+
+            for i, btn in enumerate(all_buttons):
+                if btn.is_displayed() and btn.text:
+                    text = btn.text.lower()
+                    if any(keyword in text for keyword in ['câu trả lời', 'đầu ra', 'output', 'response']):
+                        relevant_buttons.append({
+                            'index': i,
+                            'text': btn.text,
+                            'element': btn
+                        })
+
+            self.update_status(f"📋 Found {len(relevant_buttons)} output-related buttons:")
+            for btn_info in relevant_buttons[:5]:  # Show first 5
+                self.update_status(f"   [{btn_info['index']}] '{btn_info['text']}'")
+
+            # Try the most promising one
+            if relevant_buttons:
+                best_btn = relevant_buttons[0]
+                self.update_status(f"✅ Using most promising output button: '{best_btn['text']}'")
+                return best_btn['element']
+
+        except Exception as e:
+            self.update_status(f"   Debug scan failed: {e}")
+
+        for selector in selectors:
+            try:
+                element = WebDriverWait(self.driver, self.config['wait_timeout']).until(
+                    EC.element_to_be_clickable((By.XPATH, selector))
+                )
+                if element and element.is_displayed():
+                    self.update_status(f"✅ Found Output Count dropdown in popup: {element.text[:50]}...")
+                    return element
+            except:
+                continue
+
+        self.update_status("❌ Output Count dropdown not found in popup")
+        return None
+
+    def find_aspect_ratio_dropdown(self):
+        """Tìm dropdown tỷ lệ khung hình trong settings popup"""
+        self.update_status("🔍 Finding Aspect Ratio dropdown in settings popup...")
+        
+        # Debug scan for aspect ratio buttons FIRST
+        self.update_status("🔍 DEBUG: Scanning for aspect ratio buttons...")
+        try:
+            all_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+            relevant_buttons = []
+
+            for i, btn in enumerate(all_buttons):
+                if btn.is_displayed() and btn.text:
+                    text = btn.text.lower()
+                    if any(keyword in text for keyword in ['tỷ lệ', 'khung hình', 'khổ ngang', 'khổ dọc', '16:9', '9:16', 'ratio', 'crop']):
+                        relevant_buttons.append({
+                            'index': i,
+                            'text': btn.text,
+                            'element': btn
+                        })
+
+            self.update_status(f"📋 Found {len(relevant_buttons)} aspect ratio-related buttons:")
+            for btn_info in relevant_buttons[:3]:  # Show top 3
+                self.update_status(f"   [{btn_info['index']}] '{btn_info['text']}'")
+                
+            # Try clicking the first relevant button directly
+            if relevant_buttons:
+                target_btn = relevant_buttons[0]['element']
+                self.update_status(f"✅ Using first matching button: {relevant_buttons[0]['text'][:30]}...")
+                return target_btn
+
+        except Exception as e:
+            self.update_status(f"❌ Debug scan failed: {e}")
+
+        # Fallback to selectors
+        selectors = [
+            # Based on actual text found in debug
+            "//button[contains(text(), 'Tỷ lệ khung hình') and contains(text(), 'Khổ ngang')]",
+            "//button[contains(text(), 'Tỷ lệ khung hình') and contains(text(), 'arrow_drop_down')]",
+            "//button[contains(., 'crop_landscape')]",
+            "//*[contains(text(), 'Tỷ lệ khung hình')]/ancestor-or-self::button",
+            "//*[contains(text(), 'crop_landscape')]/ancestor-or-self::button",
+            "//button[contains(text(), 'Tỷ lệ')]",
+            "//button[contains(text(), 'khung hình')]"
+        ]
+
+        # Try selectors with WebDriverWait
+        for i, selector in enumerate(selectors):
+            try:
+                element = WebDriverWait(self.driver, 3).until(
+                    EC.element_to_be_clickable((By.XPATH, selector))
+                )
+                if element and element.is_displayed():
+                    self.update_status(f"✅ Found Aspect Ratio dropdown with selector {i+1}")
+                    return element
+            except:
+                continue
+
+        self.update_status("⚠️ Aspect Ratio dropdown not found - skipping (optional)")
+        return None
+
+    def select_output_count(self, count=1):
+        """Chọn số lượng video output với enhanced logic từ GUI"""
+        # 🎯 GET DYNAMIC VALUE FROM GUI
+        selected_count = self.gui.video_count_var.get()
+
+        try:
+            count = int(selected_count) if selected_count else count
+        except (ValueError, TypeError):
+            count = 1  # Fallback to default
+
+        # Validate count range
+        if count < 1 or count > 4:
+            count = 1
+            self.update_status(f"⚠️ Invalid count, using default: {count}")
+
+        self.update_status(f"🎯 Selecting output count: {count} (from GUI: {selected_count})")
+
+        # Wait for dropdown options
+        time.sleep(3)
+
+        option_selectors = [
+            f"//div[normalize-space(text())='{count}']",
+            f"//button[normalize-space(text())='{count}']",
+            f"//li[normalize-space(text())='{count}']",
+            f"//span[normalize-space(text())='{count}']",
+            f"//*[contains(text(), '{count}') and not(contains(text(), '10'))]",
+            f"//*[@role='option'][normalize-space(text())='{count}']"
+        ]
+
+        for selector in option_selectors:
+            try:
+                elements = self.driver.find_elements(By.XPATH, selector)
+                for element in elements:
+                    if element.is_displayed() and element.is_enabled():
+                        element_text = element.text.strip()
+                        if element_text == str(count):
+                            if self.safe_click(element, f"Output Count: {count}"):
+                                # 🎯 VERIFY SELECTION: Wait and confirm dropdown closed
+                                time.sleep(2)
+                                self.update_status(f"✅ Clicked output count {count}, verifying selection...")
+                                
+                                # Check if dropdown actually closed and value changed
+                                try:
+                                    # Look for the updated dropdown button text
+                                    updated_buttons = self.driver.find_elements(By.XPATH, 
+                                        "//button[contains(text(), 'Câu trả lời đầu ra cho mỗi câu lệnh')]")
+                                    for btn in updated_buttons:
+                                        if btn.is_displayed() and str(count) in btn.text:
+                                            self.update_status(f"✅ Output count {count} selection verified!")
+                                            return True
+                                    
+                                    self.update_status(f"⚠️ Output count {count} clicked but not confirmed, continuing...")
+                                    return True
+                                except:
+                                    return True
+            except:
+                continue
+
+        # 🎯 ENHANCED: JavaScript method for direct option selection
+        try:
+            script = f"""
+            // Look for dropdown options containing the target number
+            var options = document.querySelectorAll('[role="option"], .option, li, button, span, div');
+            for (var i = 0; i < options.length; i++) {{
+                var option = options[i];
+                var text = option.textContent.trim();
+                if (text === '{count}' && option.offsetParent !== null) {{
+                    option.click();
+                    return true;
+                }}
+            }}
+            
+            // If exact match fails, try partial match
+            for (var i = 0; i < options.length; i++) {{
+                var option = options[i];
+                var text = option.textContent.trim();
+                if (text.includes('{count}') && option.offsetParent !== null && text.length < 5) {{
+                    option.click();
+                    return true;
+                }}
+            }}
+            return false;
+            """
+            
+            result = self.driver.execute_script(script)
+            if result:
+                time.sleep(2)
+                self.update_status(f"✅ Output count {count} selected via JavaScript method")
+                return True
+                
+        except Exception as e:
+            self.update_status(f"⚠️ JavaScript method failed: {e}")
+
+        # Keyboard fallback (enhanced)
+        try:
+            body = self.driver.find_element(By.TAG_NAME, "body")
+            
+            # Reset to first option by going up
+            for _ in range(5):
+                body.send_keys(Keys.ARROW_UP)
+                time.sleep(0.2)
+            
+            # Navigate down to target count  
+            for i in range(count):
+                body.send_keys(Keys.ARROW_DOWN)
+                time.sleep(0.4)  # Increased delay
+                
+            body.send_keys(Keys.ENTER)
+            time.sleep(2)
+            self.update_status(f"✅ Keyboard navigation for count {count} successful")
+            return True
+        except:
+            self.update_status(f"❌ All methods failed for output count: {count}")
+            return False
+
+    def select_aspect_ratio(self, ratio=None):
+        """Chọn tỷ lệ khung hình với enhanced logic từ GUI"""
+        # 🎯 GET DYNAMIC VALUE FROM GUI
+        selected_ratio = self.gui.aspect_ratio_var.get()
+        
+        # Parse ratio from GUI selection
+        if "16:9" in selected_ratio:
+            ratio = "16:9"
+            target_text = ["khổ ngang", "16:9", "landscape", "crop_landscape"]
+        elif "9:16" in selected_ratio:
+            ratio = "9:16" 
+            target_text = ["khổ dọc", "9:16", "portrait", "crop_portrait"]
+        else:
+            ratio = "16:9"  # Default fallback
+            target_text = ["khổ ngang", "16:9", "landscape", "crop_landscape"]
+            
+        self.update_status(f"🎯 Selecting aspect ratio: {ratio} (from GUI: {selected_ratio})")
+
+        # Wait for dropdown options to appear
+        time.sleep(2)
+
+        # Try multiple selector patterns for aspect ratio options
+        option_selectors = []
+        for text in target_text:
+            option_selectors.extend([
+                f"//div[contains(text(), '{text}')]",
+                f"//button[contains(text(), '{text}')]", 
+                f"//li[contains(text(), '{text}')]",
+                f"//span[contains(text(), '{text}')]",
+                f"//*[contains(@class, 'option')][contains(text(), '{text}')]",
+                f"//*[@role='option'][contains(text(), '{text}')]"
+            ])
+
+        for selector in option_selectors:
+            try:
+                elements = self.driver.find_elements(By.XPATH, selector)
+                for element in elements:
+                    if element.is_displayed() and element.is_enabled():
+                        if self.safe_click(element, f"Aspect Ratio: {ratio}"):
+                            # 🎯 VERIFY ASPECT RATIO SELECTION
+                            time.sleep(2)
+                            self.update_status(f"✅ Clicked aspect ratio {ratio}, verifying selection...")
+                            
+                            # Check if aspect ratio actually updated
+                            try:
+                                updated_buttons = self.driver.find_elements(By.XPATH, 
+                                    "//button[contains(text(), 'Tỷ lệ khung hình')]")
+                                for btn in updated_buttons:
+                                    if btn.is_displayed():
+                                        expected_text = "Khổ ngang" if ratio == "16:9" else "Khổ dọc"
+                                        if expected_text in btn.text or ratio in btn.text:
+                                            self.update_status(f"✅ Aspect ratio {ratio} selection verified!")
+                                            return True
+                                
+                                self.update_status(f"⚠️ Aspect ratio {ratio} clicked but not confirmed, continuing...")
+                                return True
+                            except:
+                                return True
+            except:
+                continue
+
+        # 🎯 ENHANCED: JavaScript method for aspect ratio selection
+        try:
+            # Enhanced keyword matching for different languages
+            if ratio == "16:9":
+                keywords = ["16:9", "khổ ngang", "landscape", "crop_landscape", "ngang"]
+            elif ratio == "9:16":
+                keywords = ["9:16", "khổ dọc", "portrait", "crop_portrait", "dọc"]
+            else:
+                keywords = ["16:9", "khổ ngang", "landscape", "crop_landscape", "ngang"]
+                
+            script = f"""
+            var keywords = {keywords};
+            var options = document.querySelectorAll('[role="option"], .option, li, button, span, div');
+            
+            for (var k = 0; k < keywords.length; k++) {{
+                for (var i = 0; i < options.length; i++) {{
+                    var option = options[i];
+                    var text = option.textContent.toLowerCase();
+                    if (text.includes(keywords[k].toLowerCase()) && 
+                        option.offsetParent !== null &&
+                        option.getBoundingClientRect().height > 0) {{
+                        option.click();
+                        return true;
+                    }}
+                }}
+            }}
+            return false;
+            """
+            
+            result = self.driver.execute_script(script)
+            if result:
+                time.sleep(2)
+                self.update_status(f"✅ Aspect ratio {ratio} selected via JavaScript method")
+                return True
+                
+        except Exception as e:
+            self.update_status(f"⚠️ JavaScript aspect ratio method failed: {e}")
+
+        # Keyboard fallback for aspect ratio (enhanced)
+        try:
+            body = self.driver.find_element(By.TAG_NAME, "body")
+            
+            # Reset to first option
+            for _ in range(3):
+                body.send_keys(Keys.ARROW_UP)
+                time.sleep(0.3)
+            
+            if ratio == "9:16":  # Portrait usually second option
+                body.send_keys(Keys.ARROW_DOWN)
+                time.sleep(0.5)
+                body.send_keys(Keys.ENTER)
+            else:  # 16:9 usually first option  
+                body.send_keys(Keys.ENTER)
+            
+            time.sleep(2)
+            self.update_status(f"✅ Selected aspect ratio via keyboard: {ratio}")
+            return True
+        except Exception as e:
+            self.update_status(f"⚠️ Aspect ratio selection failed, continuing: {e}")
+            return True  # Don't break workflow
+
+    def _debug_dropdown_state(self, dropdown_type):
+        """🔍 DEBUG: Analyze dropdown state for troubleshooting"""
+        try:
+            self.update_status(f"🔍 DEBUG: Analyzing {dropdown_type} dropdown state...")
+            
+            # Check for any open dropdowns/menus
+            dropdowns = self.driver.find_elements(By.XPATH, 
+                "//*[@role='listbox' or @role='menu' or contains(@class, 'dropdown') or contains(@class, 'menu')]")
+            
+            self.update_status(f"🔍 Found {len(dropdowns)} potential dropdown containers")
+            
+            for i, dropdown in enumerate(dropdowns):
+                if dropdown.is_displayed():
+                    self.update_status(f"🔍 Dropdown {i+1}: Visible, size: {dropdown.size}")
+                    
+                    # Check options inside this dropdown
+                    options = dropdown.find_elements(By.XPATH, ".//*[@role='option' or contains(@class, 'option')]")
+                    self.update_status(f"🔍 Dropdown {i+1} has {len(options)} options")
+                    
+                    for j, option in enumerate(options[:5]):  # Show first 5 options
+                        if option.is_displayed():
+                            self.update_status(f"🔍 Option {j+1}: '{option.text[:30]}...'")
+                            
+        except Exception as e:
+            self.update_status(f"🔍 Debug analysis failed: {e}")
+
+    def close_settings_popup(self):
+        """🎯 TRIỆT ĐỂ V2: Ultimate settings popup closure system"""
+        self.update_status("🔧 ULTIMATE SETTINGS POPUP CLOSURE - Starting...")
+        
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            self.update_status(f"🔄 Closure attempt {attempt + 1}/{max_attempts}")
+            
+            # Check if settings are still visible
+            settings_visible = self._check_settings_visibility()
+            if not settings_visible:
+                self.update_status("✅ Settings popup successfully closed!")
+                return True  # Successfully closed early
+                
+            self.update_status(f"⚠️ Settings still visible on attempt {attempt + 1}, trying closure methods...")
+            
+            # Apply closure methods in sequence
+            if attempt == 0:
+                self._method_keyboard_close()
+            elif attempt == 1:
+                self._method_button_close()
+            elif attempt == 2:
+                self._method_outside_click()
+            elif attempt == 3:
+                self._method_force_hide()
+            else:
+                self._method_nuclear_option()
+                
+            time.sleep(2)  # Wait for UI to settle
+            
+        # Final verification
+        final_check = self._check_settings_visibility()
+        if final_check:
+            self.update_status("❌ SETTINGS POPUP STILL PERSISTS - MAXIMUM NUCLEAR FORCE")
+            self._method_nuclear_option()
+            self.update_status("⚠️ Applied nuclear option - continuing workflow")
+            return True  # Continue anyway after nuclear option
+        else:
+            self.update_status("✅ Settings popup CONFIRMED CLOSED")
+            return True  # Successfully closed
+
+    def _check_settings_visibility(self):
+        """Check if any settings elements are visible"""
+        try:
+            settings_selectors = [
+                "//button[contains(text(), 'Veo 3 - Fast')]",
+                "//button[contains(text(), 'Khổ ngang')]", 
+                "//button[contains(text(), 'Tỷ lệ khung hình')]",
+                "//button[contains(text(), 'Câu trả lời đầu ra')]",
+                "//button[contains(text(), 'Mô hình')]",
+                "//*[contains(text(), 'arrow_drop_down')]"
+            ]
+            
+            for selector in settings_selectors:
+                elements = self.driver.find_elements(By.XPATH, selector)
+                if any(elem.is_displayed() for elem in elements):
+                    return True
+            return False
+        except:
+            return True  # Assume visible if can't check
+
+    def _method_keyboard_close(self):
+        """Method 1: Enhanced keyboard closure"""
+        self.update_status("🔧 Method 1: Enhanced keyboard closure...")
+        try:
+            body = self.driver.find_element(By.TAG_NAME, "body")
+            
+            # Multiple ESC attempts with different targets
+            for i in range(5):
+                body.send_keys(Keys.ESCAPE)
+                time.sleep(0.5)
+                
+            # Try other keys that might close popups
+            body.send_keys(Keys.TAB)
+            time.sleep(0.5)
+            body.send_keys(Keys.ESCAPE)
+            
+            # Try clicking body and then ESC
+            body.click()
+            time.sleep(0.5)
+            body.send_keys(Keys.ESCAPE)
+            
+        except Exception as e:
+            self.update_status(f"⚠️ Keyboard method failed: {e}")
+
+    def _method_button_close(self):
+        """Method 2: Enhanced close button detection and clicking"""
+        self.update_status("🔧 Method 2: Enhanced close button detection...")
+        try:
+            close_selectors = [
+                "//button[contains(@aria-label, 'close') or contains(@aria-label, 'Close')]",
+                "//button[contains(@title, 'close') or contains(@title, 'Close')]",
+                "//button[contains(text(), '×')]",
+                "//button[contains(text(), 'Đóng')]",
+                "//button[contains(text(), 'close')]",
+                "//*[contains(@class, 'close')]//button",
+                "//button[contains(@class, 'close')]",
+                "//*[@role='button'][contains(@aria-label, 'close')]",
+                "//div[contains(@class, 'close-button')]",
+                "//i[contains(@class, 'close')]//parent::button",
+                "//span[contains(@class, 'close')]//parent::button"
+            ]
+            
+            for selector in close_selectors:
+                try:
+                    buttons = self.driver.find_elements(By.XPATH, selector)
+                    for btn in buttons:
+                        if btn.is_displayed() and btn.is_enabled():
+                            self.update_status(f"🔧 Clicking close button: {selector}")
+                            # Try multiple click methods
+                            try:
+                                btn.click()
+                            except:
+                                self.driver.execute_script("arguments[0].click();", btn)
+                            time.sleep(1)
+                except:
+                    continue
+                    
+        except Exception as e:
+            self.update_status(f"⚠️ Button close method failed: {e}")
+
+    def _method_outside_click(self):
         """Method 3: Click outside popup to close"""
         self.update_status("🔧 Method 3: Outside click and overlay removal...")
         try:
@@ -3469,6 +6166,12 @@ class ClausoNetGUI:
         # ⚠️ IMPORTANT: Hide window initially until license is verified
         self.root.withdraw()
 
+        # 🔒 THREAD CONTROL MECHANISM - Fix stop button bug
+        self._stop_requested = False
+        self._current_thread = None
+        self._generation_active = False
+        self._thread_lock = threading.Lock()
+
         # Backend engine
         self.engine = None
         self.content_generator = None
@@ -3728,12 +6431,6 @@ class ClausoNetGUI:
 
         row = 0
 
-        # ChatGPT Link - FULL WIDTH, smaller
-        ctk.CTkLabel(settings_frame, text="Link ChatGPT:", font=("Arial", 9)).grid(row=row, column=0, sticky="w", pady=2)
-        self.chatgpt_link = ctk.CTkEntry(settings_frame, height=22, fg_color="#404040")
-        self.chatgpt_link.grid(row=row, column=1, columnspan=3, sticky="ew", padx=(8, 0), pady=2)
-        row += 1
-
         # GPT|Gemini Prompt + Open/Select buttons (adjacent) + ChatGPT Gemini API dropdown
         ctk.CTkLabel(settings_frame, text="Prompt GPT|Gemini:", font=("Arial", 9)).grid(row=row, column=0, sticky="w", pady=2)
 
@@ -3781,11 +6478,7 @@ class ClausoNetGUI:
         self.prompt_select_btn.grid(row=0, column=2, sticky="w", padx=(3, 0), pady=0)
         row += 1
 
-        # VEO Project link - FULL WIDTH, separate row
-        ctk.CTkLabel(settings_frame, text="VEO Project link:", font=("Arial", 9)).grid(row=row, column=0, sticky="w", pady=2)
-        self.veo_link = ctk.CTkEntry(settings_frame, height=22, fg_color="#404040")
-        self.veo_link.grid(row=row, column=1, columnspan=3, sticky="ew", padx=(8, 0), pady=2)
-        row += 1
+
 
         # Type + Veo Profile on SAME ROW - like in image
         ctk.CTkLabel(settings_frame, text="Loại:", font=("Arial", 9)).grid(row=row, column=0, sticky="w", pady=2)
@@ -3891,7 +6584,7 @@ class ClausoNetGUI:
 
         self.stop_btn = ctk.CTkButton(action_button_frame, text="Dừng", width=90, height=28,
                                     fg_color="#dc3545", hover_color="#c82333", command=self.stop_generation,
-                                    font=("Arial", 10))
+                                    font=("Arial", 10), state="disabled")
         self.stop_btn.pack(side="left")
 
         # Log area frame - NOW APPEARS AFTER BUTTONS
@@ -5478,13 +8171,11 @@ Xác nhận đăng nhập và lưu cookie"""
             self.workflow_name.delete(0, "end")
             self.workflow_name.insert(0, workflow_name)
             self.content_text.delete("1.0", "end")
-            self.chatgpt_link.delete(0, "end")
 
             # Set dropdown values explicitly
             self.chatgpt_gemini_api_var.set("Gemini API")
             self.chatgpt_api_combo.set("Gemini API")
 
-            self.veo_link.delete(0, "end")
             self.image_folder.delete(0, "end")
             self.download_folder.delete(0, "end")
 
@@ -5526,9 +8217,7 @@ Xác nhận đăng nhập và lưu cookie"""
             workflow_data = {
                 'name': workflow_name,
                 'content': '',
-                'chatgpt_link': '',
                 'chatgpt_gemini_api': 'Gemini API',
-                'veo_link': '',
                 'image_folder': '',
                 'download_folder': default_paths['videos'],  # 🎯 PROPER PATH FROM RESOURCEMANAGER
                 'type': 'Text to Video',
@@ -5628,9 +8317,7 @@ Xác nhận đăng nhập và lưu cookie"""
         workflow_data = {
             'name': name,
             'content': self.content_text.get("1.0", "end").strip(),
-            'chatgpt_link': self.chatgpt_link.get().strip(),
             'chatgpt_gemini_api': self.chatgpt_gemini_api_var.get(),
-            'veo_link': self.veo_link.get().strip(),
             'image_folder': self.image_folder.get().strip(),
             'download_folder': self.download_folder.get().strip(),
             'type': self.type_var.get(),
@@ -5729,7 +8416,6 @@ Xác nhận đăng nhập và lưu cookie"""
         workflow_name = self.workflow_name.get().strip()
         if not workflow_name or workflow_name == "(No workflow selected)":
             # 🎯 SILENT AUTO-GENERATION: No dialog, just auto-create name
-            import datetime
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             auto_workflow_name = f"video_project_{timestamp}"
 
@@ -5747,13 +8433,24 @@ Xác nhận đăng nhập và lưu cookie"""
             except:
                 pass  # Continue if save fails
 
-        # Disable start button và bắt đầu generation
+        # 🔒 THREAD CONTROL: Set generation active and reset stop flag
+        with self._thread_lock:
+            self._stop_requested = False
+            self._generation_active = True
+
+        # Disable start button và enable stop button
         self.start_btn.configure(state="disabled")
+        self.stop_btn.configure(state="normal")
         self.status_var.set("Starting video generation...")
 
-        # Run in separate thread - logic thông minh sẽ được xử lý trong run_video_generation
-        thread = threading.Thread(target=self.run_video_generation, args=(content,))
+        # Run in separate thread with proper thread tracking
+        thread = threading.Thread(target=self._run_video_generation_with_control, args=(content,))
         thread.daemon = True
+        
+        # Store thread reference for stop control
+        with self._thread_lock:
+            self._current_thread = thread
+        
         thread.start()
 
     def start_all_workflows(self):
@@ -5817,6 +8514,11 @@ Xác nhận đăng nhập và lưu cookie"""
 
     def run_video_generation(self, content: str):
         """🎯 SMART START: Tạo prompts + Tự động upload lên Veo 3 (nếu có profile)"""
+        # 🔒 CHECK STOP FLAG AT START
+        if self._should_stop():
+            print("🛑 Generation stopped at start")
+            return
+
         # 🔒 VALIDATE LICENSE BEFORE VIDEO GENERATION
         if not self.validate_license_for_operation("video generation"):
             return
@@ -5909,11 +8611,30 @@ Xác nhận đăng nhập và lưu cookie"""
                 # Step 2: Generate video prompts
                 self.root.after(0, lambda: self.status_var.set(f"[{mode}] Generating video prompts..."))
 
+                # 🎯 GET VIDEO DURATION FROM GUI
+                try:
+                    video_duration = int(self.video_duration.get() or "48")
+                except (ValueError, AttributeError):
+                    video_duration = 48  # Default fallback
+                
+                self.root.after(0, lambda: self.status_var.set(f"[{mode}] Generating {video_duration//8} prompts for {video_duration}s video..."))
+
+                # 🔒 CHECK STOP FLAG BEFORE PROMPT GENERATION
+                if self._should_stop():
+                    print("🛑 Generation stopped before prompt generation")
+                    return
+
                 prompts_result = self.content_generator.generate_video_prompts(
                     script=enhanced_script,
                     provider=provider,
-                    style='cinematic'
+                    style='cinematic',
+                    video_duration=video_duration
                 )
+
+                # 🔒 CHECK STOP FLAG AFTER PROMPT GENERATION
+                if self._should_stop():
+                    print("🛑 Generation stopped after prompt generation")
+                    return
 
                 if prompts_result.get('status') != 'success':
                     error_msg = prompts_result.get('error_message', 'Failed to generate video prompts')
@@ -5961,32 +8682,37 @@ Xác nhận đăng nhập và lưu cookie"""
             # Create output directory if it doesn't exist
             os.makedirs("output", exist_ok=True)
 
-            # Save enhanced script and prompts to files
+            # 🔧 FIX: Chỉ tạo 1 file duy nhất chứa tất cả
             timestamp = int(time.time())
-
-            # 🎯 SMART FILE NAMING: 2 files rõ ràng với timestamp
             provider_name = 'geminiai' if provider == 'gemini' else 'chatgpt'
 
             if mode == "PROMPT_ONLY":
-                # CHẾ ĐỘ CHỈ TẠO PROMPT: Tên file cơ bản (không có timestamp)
-                script_file = f"output/{provider_name}_script.txt"
-                prompts_file = f"output/{provider_name}_prompt.txt"
+                # CHẾ ĐỘ CHỈ TẠO PROMPT: 1 file duy nhất
+                output_file = f"output/{provider_name}_prompt.txt"
             else:
-                # CHẾ ĐỘ FULL AUTOMATION: Tên file với timestamp để phân biệt rõ ràng
-                from datetime import datetime
-                time_str = datetime.fromtimestamp(timestamp).strftime("%Y%m%d_%H%M%S")
-                script_file = f"output/{provider_name}_script_{time_str}.txt"
-                prompts_file = f"output/{provider_name}_prompt_{time_str}.txt"
+                # CHẾ ĐỘ FULL AUTOMATION: 1 file với timestamp
+                time_str = datetime.datetime.fromtimestamp(timestamp).strftime("%Y%m%d_%H%M%S")
+                output_file = f"output/{provider_name}_prompt_{time_str}.txt"
 
-            with open(script_file, 'w', encoding='utf-8') as f:
-                f.write(f"Original Script:\n{content}\n\n")
-                f.write(f"Enhanced Script:\n{enhanced_script}\n\n")
-                f.write(f"Provider: {provider.upper()}")
-
-            with open(prompts_file, 'w', encoding='utf-8') as f:
+            # Ghi tất cả vào 1 file duy nhất
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(f"=== CLAUSONET 4.0 - VIDEO AI PROMPTS ===\n")
+                f.write(f"Provider: {provider.upper()}\n")
+                f.write(f"Generated: {datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                
+                f.write(f"ORIGINAL SCRIPT:\n{content}\n\n")
+                f.write(f"ENHANCED SCRIPT:\n{enhanced_script}\n\n")
+                f.write(f"=== VIDEO PROMPTS FOR GOOGLE VEO 3 ===\n\n")
                 f.write(video_prompts)
 
+            prompts_file = output_file  # Để compatibility với code sau này
+
             # ===== PHASE 2: VEO AUTOMATION (if applicable) =====
+
+            # 🔒 CHECK STOP FLAG BEFORE VEO AUTOMATION
+            if self._should_stop():
+                print("🛑 Generation stopped before Veo automation")
+                return
 
             veo_automation_result = None
 
@@ -6082,7 +8808,7 @@ Xác nhận đăng nhập và lưu cookie"""
             result = {
                 'success': True,
                 'mode': mode,
-                'script_file': script_file,
+                'output_file': output_file,
                 'prompts_file': prompts_file,
                 'provider': provider.upper(),
                 'generation_type': generation_type,
@@ -6102,11 +8828,22 @@ Xác nhận đăng nhập và lưu cookie"""
             self.root.after(0, self.on_generation_complete, result)
 
         except Exception as e:
+            # 🔒 CHECK IF ERROR DUE TO STOP REQUEST
+            if self._should_stop():
+                print("🛑 Generation stopped during execution")
+                return
+            
             self.root.after(0, self.on_generation_error, str(e))
 
     def on_generation_complete(self, result):
         """🎯 SMART CALLBACK: Xử lý kết quả cho cả 2 modes"""
+        # 🔒 DON'T PROCESS IF STOPPED
+        if self._should_stop():
+            print("🛑 Generation completion ignored due to stop request")
+            return
+            
         self.start_btn.configure(state="normal")
+        self.stop_btn.configure(state="disabled")
 
         if result.get('success'):
             mode = result.get('mode', 'UNKNOWN')
@@ -6187,13 +8924,93 @@ Xác nhận đăng nhập và lưu cookie"""
 
     def on_generation_error(self, error_msg):
         """Callback khi có lỗi"""
+        # 🔒 DON'T SHOW ERROR IF STOPPED BY USER
+        if self._should_stop():
+            print("🛑 Generation error ignored due to stop request")
+            return
+            
         self.start_btn.configure(state="normal")
+        self.stop_btn.configure(state="disabled")
         self.status_var.set(f"Error: {error_msg}")
         messagebox.showerror("Lỗi", f"❌ {error_msg}")
 
     def stop_generation(self):
-        """Dừng quá trình tạo video"""
-        self.status_var.set("Generation stopped by user")
+        """🔒 ENHANCED STOP: Dừng quá trình tạo video hoàn toàn"""
+        print("🛑 Stop generation requested by user")
+        
+        with self._thread_lock:
+            # Set stop flag
+            self._stop_requested = True
+            self._generation_active = False
+            
+            # Try to stop VeoWorkflowEngine if running
+            if hasattr(self, 'veo_engine') and self.veo_engine:
+                self.veo_engine._is_running = False
+                print("🛑 VeoWorkflowEngine stopped")
+            
+            # Try to stop workflow engine if exists
+            if hasattr(self, 'workflow_engine') and self.workflow_engine:
+                self.workflow_engine._is_running = False
+                print("🛑 WorkflowEngine stopped")
+        
+        # Reset UI state
+        self.start_btn.configure(state="normal")
+        self.stop_btn.configure(state="disabled")
+        self.status_var.set("🛑 Generation stopped by user")
+        
+        # Clear thread reference
+        with self._thread_lock:
+            self._current_thread = None
+        
+        print("✅ Stop generation completed")
+
+    def _run_video_generation_with_control(self, content: str):
+        """🔒 THREAD-SAFE wrapper cho run_video_generation với stop control"""
+        try:
+            print("🎬 Starting video generation with stop control...")
+            
+            # Check stop flag before starting
+            if self._should_stop():
+                print("🛑 Generation stopped before starting")
+                self._cleanup_generation()
+                return
+            
+            # Run actual video generation with periodic stop checks
+            self.run_video_generation(content)
+            
+        except Exception as e:
+            print(f"❌ Video generation error: {e}")
+            self.root.after(0, lambda: self.status_var.set(f"❌ Generation failed: {e}"))
+        finally:
+            # Always cleanup when thread ends
+            self._cleanup_generation()
+    
+    def _should_stop(self):
+        """🔒 Thread-safe check if generation should stop"""
+        with self._thread_lock:
+            return self._stop_requested or not self._generation_active
+    
+    def _cleanup_generation(self):
+        """🔒 Cleanup generation state when stopping or completing"""
+        print("🧹 Cleaning up generation state...")
+        
+        with self._thread_lock:
+            self._generation_active = False
+            self._current_thread = None
+        
+        # Reset UI state in main thread
+        self.root.after(0, self._reset_ui_state)
+    
+    def _reset_ui_state(self):
+        """🔒 Reset UI state after generation ends"""
+        self.start_btn.configure(state="normal")
+        self.stop_btn.configure(state="disabled")
+        
+        # Only update status if not already stopped by user
+        if not self._stop_requested:
+            self.status_var.set("✅ Generation completed")
+        
+        print("✅ UI state reset completed")
 
     def on_workflow_select(self, index):
         """Khi chọn workflow từ list"""
@@ -6207,8 +9024,7 @@ Xác nhận đăng nhập và lưu cookie"""
         self.content_text.delete("1.0", "end")
         self.content_text.insert("1.0", workflow.get('content', ''))
 
-        self.chatgpt_link.delete(0, "end")
-        self.chatgpt_link.insert(0, workflow.get('chatgpt_link', ''))
+
 
         # Set dropdown values explicitly with both variable and widget
         api_value = workflow.get('chatgpt_gemini_api', 'Gemini API')
@@ -6218,8 +9034,7 @@ Xác nhận đăng nhập và lưu cookie"""
         self.chatgpt_gemini_api_var.set(api_value)
         self.chatgpt_api_combo.set(api_value)
 
-        self.veo_link.delete(0, "end")
-        self.veo_link.insert(0, workflow.get('veo_link', ''))
+
 
         self.image_folder.delete(0, "end")
         self.image_folder.insert(0, workflow.get('image_folder', ''))
@@ -6718,10 +9533,8 @@ Xác nhận đăng nhập và lưu cookie"""
                 if not line:
                     continue
 
-                # 🎯 Detect prompt patterns - Enhanced for Gemini format
-                if (line.startswith('PROMPT') and ':' in line) or \
-                   (line.startswith('**PROMPT') and '**' in line) or \
-                   (line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.', '11.', '12.', '13.', '14.', '15.')) and len(line) > 10):
+                # 🎯 PHASE 1: Detect simple PROMPT X: format only
+                if line.startswith('PROMPT ') and ':' in line:
 
                     # Save previous prompt if exists
                     if current_prompt and current_prompt['text'].strip():
@@ -6739,43 +9552,39 @@ Xác nhận đăng nhập và lưu cookie"""
                         'veo_ready': True
                     }
 
-                    # Extract prompt text after colon or number
-                    if line.startswith('**PROMPT') and ':' in line:
-                        # For **PROMPT X: Title** format, the actual content comes on next lines
-                        # Just extract the title after colon for now, content will be added later
-                        colon_pos = line.find(':')
-                        prompt_text = line[colon_pos + 1:].strip().rstrip('*').strip()
-                        current_prompt['title'] = prompt_text
-                        current_prompt['text'] = ''  # Content will be added from next lines
-                    elif ':' in line:
-                        colon_pos = line.find(':')
-                        prompt_text = line[colon_pos + 1:].strip()
-                        if prompt_text:
-                            current_prompt['text'] = prompt_text
-                    elif line.startswith(tuple(f'{i}.' for i in range(1, 16))):
-                        dot_pos = line.find('.')
-                        prompt_text = line[dot_pos + 1:].strip()
-                        if prompt_text:
-                            current_prompt['text'] = prompt_text
-                    else:
-                        prompt_text = line.strip()
-                        if prompt_text:
-                            current_prompt['text'] = prompt_text
+                    # Extract prompt content after colon - PHASE 1 SIMPLE
+                    colon_pos = line.find(':')
+                    prompt_content = line[colon_pos + 1:].strip()
+                    
+                    # Extract prompt number for title
+                    prompt_part = line[:colon_pos].strip()  # PROMPT 1
+                    
+                    current_prompt['title'] = prompt_part
+                    current_prompt['text'] = prompt_content
 
                 elif current_prompt is not None:
-                    # 📝 Include content for this prompt, but skip meta lines
+                    # 📝 SIMPLIFIED: Collect content for clean prompt format
                     if len(line) > 0:
-                        # Skip meta lines like "*   **Camera:**", "*   **Lighting:**", etc.
-                        if line.strip().startswith('*') and ('**' in line and ':**' in line):
-                            continue  # Skip metadata lines
+                        # Skip separator lines
                         if line.strip().startswith('---'):
-                            continue  # Skip separator lines
-
-                        # Add actual prompt content
-                        if current_prompt['text']:
-                            current_prompt['text'] += '\n' + line
-                        else:
-                            current_prompt['text'] = line
+                            continue
+                        
+                        # Skip common header/footer lines
+                        if any(skip_phrase in line.lower() for skip_phrase in [
+                            'here are the', 'the detailed prompts', 'generate simple prompts',
+                            'rules:', 'format:', 'example:', 'character consistency:', 'environment consistency:'
+                        ]):
+                            continue
+                        
+                        # For SIMPLE format, just collect meaningful lines
+                        clean_line = line.strip()
+                        if clean_line and len(clean_line) > 15:  # Only substantial content
+                            # Skip bullet points and metadata
+                            if not clean_line.startswith(('*', '-', '•', '1.', '2.', '3.', '4.', '5.')):
+                                if current_prompt['text']:
+                                    current_prompt['text'] += ' ' + clean_line
+                                else:
+                                    current_prompt['text'] = clean_line
 
             # Don't forget the last prompt
             if current_prompt and current_prompt['text'].strip():
