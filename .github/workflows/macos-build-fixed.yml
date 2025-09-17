@@ -35,7 +35,7 @@ jobs:
         
     - name: 🔐 Check for hardcoded API keys
       run: |
-        if grep -r "AIzaSy" . --exclude-dir=.git; then
+        if grep -r "AIzaSy" . --exclude-dir=.git --exclude-dir=.github; then
           echo "⚠️ WARNING: Potential API keys found in code!"
           exit 1
         fi
