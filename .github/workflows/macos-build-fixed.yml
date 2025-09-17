@@ -15,6 +15,13 @@ on:
         type: choice
         options: [release, debug]
 
+permissions:
+  contents: write
+  actions: read
+  security-events: write
+  pull-requests: read
+  packages: write
+
 env:
   PYTHON_VERSION: '3.11'
   PROJECT_NAME: 'ClausoNet 4.0 Pro'
@@ -395,7 +402,12 @@ jobs:
     name: 🎉 Create macOS Release
     needs: build-macos
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: false  # Temporarily disabled due to permissions issue
+    permissions:
+      contents: write
+      pull-requests: read
+      issues: read
+      packages: write
     
     steps:
     - name: 📥 Checkout code
@@ -426,7 +438,7 @@ jobs:
         ls -la macos/*.dmg || echo "No DMG files"
         
     - name: 🏷️ Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.release_info.outputs.tag }}
         name: ClausoNet 4.0 Pro - macOS - ${{ steps.release_info.outputs.date }}
@@ -476,6 +488,8 @@ jobs:
         draft: false
         prerelease: false
         generate_release_notes: true
+        fail_on_unmatched_files: false
+        make_latest: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
