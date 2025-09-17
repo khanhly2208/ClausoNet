@@ -5,7 +5,7 @@
 apis:
   gemini:
     enabled: true
-    api_key: "AIzaSyDLbcb00-fyyfn-FW7807FQqqtUVrdo4As"  # Từ https://makersuite.google.com/app/apikey
+    api_key: "YOUR_GEMINI_API_KEY"  # Từ https://makersuite.google.com/app/apikey
     model: "gemini-2.5-flash"
     max_tokens: 8192
     temperature: 0.7

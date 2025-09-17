@@ -1,0 +1,36 @@
+# ClausoNet 4.0 Pro - Python Dependencies
+# Core GUI Framework
+customtkinter>=5.2.0
+
+# Web Automation
+selenium>=4.15.0
+
+# HTTP Requests
+requests>=2.31.0
+
+# Image Processing
+pillow>=10.0.0
+
+# Web Scraping
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Security & Certificates
+certifi>=2023.7.22
+urllib3>=2.0.0
+
+# System Information
+psutil>=5.9.0
+
+# Clipboard Operations
+pyperclip>=1.8.0
+
+# Configuration Files
+pyyaml>=6.0.0
+
+# Build Tool
+pyinstaller>=6.0.0
+
+# Optional: Additional utilities
+packaging>=23.0
+setuptools>=68.0.0 
