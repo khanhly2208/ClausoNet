@@ -15,6 +15,13 @@ on:
         type: choice
         options: [release, debug]
 
+permissions:
+  contents: write
+  actions: read
+  security-events: write
+  pull-requests: read
+  packages: write
+
 env:
   PYTHON_VERSION: '3.11'
   PROJECT_NAME: 'ClausoNet 4.0 Pro'
@@ -65,13 +72,28 @@ jobs:
     - name: 📦 Install macOS dependencies
       run: |
         python3 -m pip install --upgrade pip
-        pip3 install pyinstaller>=6.0.0
-        pip3 install customtkinter>=5.2.0
-        pip3 install selenium>=4.15.0
-        pip3 install requests>=2.31.0
-        pip3 install pillow>=10.0.0
-        pip3 install beautifulsoup4 lxml certifi urllib3
-        pip3 install psutil pyperclip pyyaml
+        
+        # Install from requirements.txt if available
+        if [ -f "requirements.txt" ]; then
+          echo "📋 Installing from requirements.txt..."
+          pip3 install -r requirements.txt
+        else
+          echo "📦 Installing individual packages..."
+          pip3 install pyinstaller>=6.0.0
+          pip3 install customtkinter>=5.2.0
+          pip3 install selenium>=4.15.0
+          pip3 install requests>=2.31.0
+          pip3 install pillow>=10.0.0
+          pip3 install beautifulsoup4 lxml certifi urllib3
+          pip3 install psutil pyperclip pyyaml
+        fi
+        
+        # Verify critical imports
+        echo "🔍 Verifying imports..."
+        python3 -c "import customtkinter; print('✅ customtkinter OK')"
+        python3 -c "import tkinter; print('✅ tkinter OK')"
+        python3 -c "import PIL; print('✅ PIL OK')"
+        python3 -c "import selenium; print('✅ selenium OK')"
         
     - name: 🔧 Verify dependencies
       run: |
@@ -123,24 +145,108 @@ jobs:
       run: |
         echo "🍎 Building ClausoNet 4.0 Pro for macOS..."
         
-        if [ -f "build_main_macos.py" ]; then
-          python3 build_main_macos.py
+        # Create a simple PyInstaller spec file
+        cat > clausonet_macos.spec << 'EOF'
+        # -*- mode: python ; coding: utf-8 -*-
+        import os
+        from pathlib import Path
+        
+        block_cipher = None
+        
+        a = Analysis(
+            ['gui/main_window.py'],
+            pathex=['.'],
+            binaries=[],
+            datas=[
+                ('data', 'data'),
+                ('assets', 'assets'),
+                ('config.yaml', '.'),
+            ],
+            hiddenimports=[
+                'tkinter',
+                'customtkinter',
+                'selenium',
+                'PIL',
+                'PIL.Image',
+                'PIL.ImageTk',
+                'requests',
+                'yaml',
+                'json',
+                'threading',
+                'datetime',
+                'pathlib',
+                'os',
+                'sys'
+            ],
+            hookspath=[],
+            hooksconfig={},
+            runtime_hooks=[],
+            excludes=[],
+            win_no_prefer_redirects=False,
+            win_private_assemblies=False,
+            cipher=block_cipher,
+            noarchive=False,
+        )
+        
+        pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+        
+        exe = EXE(
+            pyz,
+            a.scripts,
+            [],
+            exclude_binaries=True,
+            name='ClausoNet 4.0 Pro',
+            debug=False,
+            bootloader_ignore_signals=False,
+            strip=False,
+            upx=False,
+            console=False,
+            disable_windowed_traceback=False,
+            target_arch=None,
+            codesign_identity=None,
+            entitlements_file=None,
+        )
+        
+        coll = COLLECT(
+            exe,
+            a.binaries,
+            a.zipfiles,
+            a.datas,
+            strip=False,
+            upx=False,
+            upx_exclude=[],
+            name='ClausoNet 4.0 Pro',
+        )
+        
+        app = BUNDLE(
+            coll,
+            name='ClausoNet 4.0 Pro.app',
+            icon='assets/icon.icns' if os.path.exists('assets/icon.icns') else None,
+            bundle_identifier='com.clausonet.clausonet4pro',
+            version='1.0.0',
+            info_plist={
+                'CFBundleName': 'ClausoNet 4.0 Pro',
+                'CFBundleDisplayName': 'ClausoNet 4.0 Pro',
+                'CFBundleVersion': '1.0.0',
+                'CFBundleShortVersionString': '1.0.0',
+                'LSMinimumSystemVersion': '10.14.0',
+                'NSHighResolutionCapable': True,
+            },
+        )
+        EOF
+        
+        # Build using the spec file
+        echo "📝 Building with custom spec file..."
+        pyinstaller --clean --noconfirm clausonet_macos.spec
+        
+        # Verify build
+        if [ -d "dist/ClausoNet 4.0 Pro.app" ]; then
+          echo "✅ Main app built successfully"
+          ls -la "dist/ClausoNet 4.0 Pro.app"
         else
-          echo "⚠️ build_main_macos.py not found, using PyInstaller directly..."
-          
-          pyinstaller --clean --noconfirm \
-            --name "ClausoNet 4.0 Pro" \
-            --windowed \
-            --onedir \
-            --icon="assets/icon.icns" \
-            --add-data "data:data" \
-            --add-data "assets:assets" \
-            --add-data "config.yaml:." \
-            --hidden-import="tkinter" \
-            --hidden-import="customtkinter" \
-            --hidden-import="selenium" \
-            --hidden-import="PIL" \
-            gui/main_window.py
+          echo "❌ Build failed - checking dist directory:"
+          ls -la dist/ || echo "No dist directory found"
+          exit 1
         fi
         
     - name: 🔧 Build Admin Tools
@@ -296,7 +402,12 @@ jobs:
     name: 🎉 Create macOS Release
     needs: build-macos
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: false  # Temporarily disabled due to permissions issue
+    permissions:
+      contents: write
+      pull-requests: read
+      issues: read
+      packages: write
     
     steps:
     - name: 📥 Checkout code
@@ -327,7 +438,7 @@ jobs:
         ls -la macos/*.dmg || echo "No DMG files"
         
     - name: 🏷️ Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.release_info.outputs.tag }}
         name: ClausoNet 4.0 Pro - macOS - ${{ steps.release_info.outputs.date }}
@@ -377,6 +488,8 @@ jobs:
         draft: false
         prerelease: false
         generate_release_notes: true
+        fail_on_unmatched_files: false
+        make_latest: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

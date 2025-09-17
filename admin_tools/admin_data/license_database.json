@@ -2,8 +2,8 @@
   "metadata": {
     "created": "2025-09-14T10:26:47.836582",
     "version": "1.0",
-    "total_keys": 4,
-    "last_updated": "2025-09-14T10:42:42.777342"
+    "total_keys": 5,
+    "last_updated": "2025-09-17T16:48:27.947533"
   },
   "keys": {
     "CNPRO-20250917-ZH7RQ-AFJCU": {
@@ -34,6 +34,14 @@
       "created_date": "2025-09-14T10:42:42.777342",
       "expiry_date": "2026-09-14T10:42:42.777342",
       "duration_days": 365,
+      "customer_name": "",
+      "notes": "",
+      "status": "generated"
+    },
+    "CNPRO-22990702-T6T3Q-DGD66": {
+      "created_date": "2025-09-17T16:48:27.947533",
+      "expiry_date": "2299-07-02T16:48:27.947533",
+      "duration_days": 99999,
       "customer_name": "",
       "notes": "",
       "status": "generated"

@@ -1,542 +1,271 @@
 #!/usr/bin/env python3
 """
-ClausoNet 4.0 Pro - Main Application Builder for macOS
-Script để build ClausoNet main application thành .app bundle trên macOS
+ClausoNet 4.0 Pro - macOS Build Script
+Builds the main application for macOS using PyInstaller
 """
 
 import os
 import sys
-import subprocess
 import shutil
-import json
-import platform
+import subprocess
 from pathlib import Path
-from datetime import datetime
 
-class ClausoNetMainBuilderMacOS:
-    """Builder cho ClausoNet main application trên macOS"""
-    
+class MacOSMainBuilder:
     def __init__(self):
         self.project_dir = Path(__file__).parent
+        self.dist_dir = self.project_dir / "dist"
         self.build_dir = self.project_dir / "build"
-        self.dist_dir = self.project_dir / "dist" 
-        self.assets_dir = self.project_dir / "assets"
-        self.spec_file = self.project_dir / "clausonet_build.spec"
+        self.app_name = "ClausoNet 4.0 Pro"
         
-        print("🍎 ClausoNet 4.0 Pro - Main Application Builder for macOS")
-        print("=" * 60)
-        print(f"🖥️  Platform: {platform.system()} {platform.release()}")
-        print(f"📁 Project directory: {self.project_dir}")
+    def clean_build_dirs(self):
+        """Clean previous build artifacts"""
+        print("🧹 Cleaning previous build...")
+        for dir_path in [self.dist_dir, self.build_dir]:
+            if dir_path.exists():
+                shutil.rmtree(dir_path)
+                print(f"   Removed: {dir_path}")
         
-        # Check if running on macOS
-        if platform.system() != "Darwin":
-            print("❌ This script must be run on macOS!")
-            print("💡 For Windows, use build_fixed_exe.py or build.py")
-            sys.exit(1)
-            
-    def check_dependencies(self):
-        """Kiểm tra các dependency cần thiết cho macOS"""
-        print("\n🔍 Checking macOS dependencies...")
+    def check_requirements(self):
+        """Check if all required files exist"""
+        print("🔍 Checking requirements...")
         
-        # Check Python version
-        python_version = sys.version_info
-        if python_version < (3, 8):
-            print(f"❌ Python version {python_version.major}.{python_version.minor} is too old")
-            print("💡 Please upgrade to Python 3.8+")
-            return False
-        else:
-            print(f"✅ Python {python_version.major}.{python_version.minor}.{python_version.micro}")
-        
-        # Required packages for main application
-        required_packages = [
-            ('PyInstaller', 'PyInstaller build tool'),
-            ('customtkinter', 'GUI framework'),
-            ('selenium', 'Web automation'),
-            ('requests', 'HTTP client'),
-            ('PIL', 'Image processing'),
-        ]
-        
-        missing_packages = []
-        
-        for package_name, description in required_packages:
-            try:
-                if package_name == 'PIL':
-                    import PIL
-                    print(f"✅ {package_name} ({description})")
-                else:
-                    __import__(package_name.lower())
-                    print(f"✅ {package_name} ({description})")
-            except ImportError:
-                print(f"❌ {package_name} not found - {description}")
-                missing_packages.append(package_name)
-        
-        if missing_packages:
-            print(f"\n💡 Install missing packages:")
-            for pkg in missing_packages:
-                if pkg == 'PIL':
-                    print(f"   pip3 install pillow")
-                else:
-                    print(f"   pip3 install {pkg.lower()}")
-            return False
-            
-        # Check macOS specific tools
-        tools_to_check = [
-            ('iconutil', 'Icon creation tool'),
-            ('sips', 'Image processing tool'),
-            ('hdiutil', 'DMG creation tool'),
-        ]
-        
-        for tool, description in tools_to_check:
-            try:
-                result = subprocess.run(['which', tool], capture_output=True, text=True)
-                if result.returncode == 0:
-                    print(f"✅ {tool} ({description})")
-                else:
-                    print(f"⚠️ {tool} not found - {description}")
-            except Exception:
-                print(f"⚠️ Cannot check {tool}")
-        
-        # Check required files
         required_files = [
-            self.spec_file,
-            self.project_dir / "gui" / "main_window.py",
+            "gui/main_window.py",
+            "config.yaml.template"
         ]
+        
+        required_dirs = [
+            "data",
+            "assets", 
+            "api",
+            "core",
+            "utils"
+        ]
+        
+        missing = []
         
         for file_path in required_files:
-            if file_path.exists():
-                print(f"✅ {file_path.name} found")
-            else:
-                print(f"❌ {file_path.name} not found")
-                return False
-        
+            if not (self.project_dir / file_path).exists():
+                missing.append(f"File: {file_path}")
+                
+        for dir_path in required_dirs:
+            if not (self.project_dir / dir_path).exists():
+                missing.append(f"Directory: {dir_path}")
+                
+        if missing:
+            print("❌ Missing requirements:")
+            for item in missing:
+                print(f"   - {item}")
+            return False
+            
+        print("✅ All requirements found")
         return True
         
-    def prepare_assets(self):
-        """Chuẩn bị assets cho macOS build"""
-        print("\n🎨 Preparing assets for macOS...")
+    def prepare_config(self):
+        """Prepare config.yaml from template"""
+        print("⚙️ Preparing configuration...")
         
-        # Ensure assets directory exists
-        self.assets_dir.mkdir(exist_ok=True)
+        template_file = self.project_dir / "config.yaml.template"
+        config_file = self.project_dir / "config.yaml"
         
-        # Check/create icon
-        icon_icns = self.assets_dir / "icon.icns"
-        icon_png = self.assets_dir / "icon.png"
+        if template_file.exists():
+            shutil.copy2(template_file, config_file)
+            print(f"   Copied: {template_file} -> {config_file}")
+        else:
+            print("⚠️ config.yaml.template not found, creating minimal config...")
+            with open(config_file, 'w') as f:
+                f.write("""# ClausoNet 4.0 Pro Configuration
+apis:
+  gemini:
+    enabled: true
+    api_key: "YOUR_GEMINI_API_KEY"
+    model: "gemini-2.5-flash"
+""")
+            
+    def prepare_icon(self):
+        """Prepare macOS icon"""
+        print("🎨 Preparing icon...")
         
-        if icon_icns.exists():
-            print(f"✅ macOS icon found: {icon_icns}")
-            return str(icon_icns)
-        elif icon_png.exists():
-            print(f"🖼️ Converting PNG to ICNS: {icon_png}")
-            if self._create_icns_from_png(icon_png, icon_icns):
-                return str(icon_icns)
+        assets_dir = self.project_dir / "assets"
+        icon_icns = assets_dir / "icon.icns"
+        icon_png = assets_dir / "icon.png"
         
-        # Create default icon if none found
-        print("⚠️ No icon found, creating default...")
-        if self._create_default_icon(icon_icns):
-            return str(icon_icns)
-            
-        print("❌ Could not create icon")
-        return None
-        
-    def _create_icns_from_png(self, png_path, icns_path):
-        """Tạo .icns từ .png sử dụng sips và iconutil"""
-        try:
-            # Create iconset directory
-            iconset_dir = icns_path.parent / f"{icns_path.stem}.iconset"
-            iconset_dir.mkdir(exist_ok=True)
-            
-            # Define required sizes for macOS
-            sizes = [
-                (16, "icon_16x16.png"),
-                (32, "icon_16x16@2x.png"),
-                (32, "icon_32x32.png"),
-                (64, "icon_32x32@2x.png"),
-                (128, "icon_128x128.png"),
-                (256, "icon_128x128@2x.png"),
-                (256, "icon_256x256.png"),
-                (512, "icon_256x256@2x.png"),
-                (512, "icon_512x512.png"),
-                (1024, "icon_512x512@2x.png")
-            ]
-            
-            # Create all required sizes using sips
-            for size, filename in sizes:
-                subprocess.run([
-                    'sips', '-z', str(size), str(size),
-                    str(png_path),
-                    '--out', str(iconset_dir / filename)
-                ], capture_output=True)
-            
-            # Convert to icns using iconutil
-            result = subprocess.run([
-                'iconutil', '-c', 'icns',
-                str(iconset_dir),
-                '-o', str(icns_path)
-            ], capture_output=True, text=True)
-            
-            # Clean up iconset directory
-            shutil.rmtree(iconset_dir)
-            
-            if result.returncode == 0:
-                print(f"✅ Created ICNS icon: {icns_path}")
-                return True
-            else:
-                print(f"❌ Icon creation failed: {result.stderr}")
-                return False
-                
-        except Exception as e:
-            print(f"❌ Icon creation error: {e}")
-            return False
-            
-    def _create_default_icon(self, icns_path):
-        """Tạo icon mặc định"""
-        try:
-            from PIL import Image, ImageDraw, ImageFont
-            
-            # Create a simple icon
-            img = Image.new('RGBA', (512, 512), (30, 144, 255, 255))  # Dodger blue
-            draw = ImageDraw.Draw(img)
-            
-            # Draw ClausoNet logo concept
-            # Main circle
-            draw.ellipse([50, 50, 462, 462], fill=(255, 255, 255, 255))
-            draw.ellipse([80, 80, 432, 432], fill=(30, 144, 255, 255))
-            
-            # Inner design
-            draw.ellipse([150, 150, 362, 362], fill=(255, 255, 255, 255))
-            draw.ellipse([180, 180, 332, 332], fill=(30, 144, 255, 255))
-            
-            # Center dot
-            draw.ellipse([230, 230, 282, 282], fill=(255, 255, 255, 255))
-            
-            # Add text
+        if not icon_icns.exists() and icon_png.exists():
+            print("   Converting PNG to ICNS...")
             try:
-                font_large = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 36)
-                font_small = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 24)
-            except:
-                font_large = ImageFont.load_default()
-                font_small = ImageFont.load_default()
+                # Create iconset directory
+                iconset_dir = assets_dir / "icon.iconset"
+                iconset_dir.mkdir(exist_ok=True)
+                
+                # Generate different sizes
+                sizes = [16, 32, 128, 256, 512]
+                for size in sizes:
+                    cmd = [
+                        "sips", "-z", str(size), str(size), 
+                        str(icon_png), 
+                        "--out", str(iconset_dir / f"icon_{size}x{size}.png")
+                    ]
+                    subprocess.run(cmd, check=True, capture_output=True)
+                    
+                    # Create @2x versions
+                    if size <= 256:
+                        cmd = [
+                            "sips", "-z", str(size*2), str(size*2),
+                            str(icon_png),
+                            "--out", str(iconset_dir / f"icon_{size}x{size}@2x.png")
+                        ]
+                        subprocess.run(cmd, check=True, capture_output=True)
+                
+                # Convert to icns
+                cmd = ["iconutil", "-c", "icns", str(iconset_dir)]
+                subprocess.run(cmd, check=True, capture_output=True)
+                
+                print(f"   Created: {icon_icns}")
+                
+            except subprocess.CalledProcessError as e:
+                print(f"⚠️ Icon conversion failed: {e}")
+                
+        elif icon_icns.exists():
+            print(f"   Using existing: {icon_icns}")
+        else:
+            print("⚠️ No icon found, will use default")
             
-            draw.text((180, 300), "ClausoNet", fill=(255, 255, 255, 255), font=font_large)
-            draw.text((210, 340), "4.0 Pro", fill=(255, 255, 255, 255), font=font_small)
-            
-            # Save as PNG first
-            png_path = icns_path.with_suffix('.png')
-            img.save(png_path)
-            
-            # Convert to icns
-            return self._create_icns_from_png(png_path, icns_path)
-            
-        except ImportError:
-            print("⚠️ PIL not available for default icon creation")
-            return False
-        except Exception as e:
-            print(f"❌ Default icon creation error: {e}")
-            return False
-            
-    def check_chromedriver(self):
-        """Kiểm tra ChromeDriver"""
-        print("\n🚗 Checking ChromeDriver...")
+    def build_app(self):
+        """Build the macOS app using PyInstaller"""
+        print("🏗️ Building macOS application...")
         
-        possible_locations = [
-            self.project_dir / "drivers" / "chromedriver",
-            self.project_dir / "tools" / "chromedriver" / "chromedriver",
+        # PyInstaller command
+        cmd = [
+            "pyinstaller",
+            "--clean",
+            "--noconfirm",
+            "--name", self.app_name,
+            "--windowed",
+            "--onedir",
+            "--add-data", "data:data",
+            "--add-data", "assets:assets",
+            "--add-data", "config.yaml:.",
+            "--hidden-import", "tkinter",
+            "--hidden-import", "customtkinter", 
+            "--hidden-import", "selenium",
+            "--hidden-import", "PIL",
+            "--hidden-import", "requests",
+            "--hidden-import", "yaml",
+            "--hidden-import", "json",
+            "--exclude-module", "pytest",
+            "--exclude-module", "unittest",
+            str(self.project_dir / "gui" / "main_window.py")
         ]
         
-        for location in possible_locations:
-            if location.exists():
-                print(f"✅ ChromeDriver found: {location}")
-                return True
-                
-        print("⚠️ ChromeDriver not found")
-        print("💡 Download ChromeDriver for macOS from:")
-        print("   https://chromedriver.chromium.org/")
-        print("   Place it in drivers/ or tools/chromedriver/")
-        return False
-        
-    def build_app(self):
-        """Build .app bundle using PyInstaller"""
-        print("\n🔨 Building ClausoNet 4.0 Pro for macOS...")
-        
-        # Clean previous builds
-        if self.dist_dir.exists():
-            shutil.rmtree(self.dist_dir)
-            print("🗑️ Cleaned dist directory")
+        # Add icon if available
+        icon_path = self.project_dir / "assets" / "icon.icns"
+        if icon_path.exists():
+            cmd.extend(["--icon", str(icon_path)])
             
+        print(f"   Command: {' '.join(cmd)}")
+        
+        try:
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            print("✅ Build completed successfully")
+            return True
+            
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Build failed: {e}")
+            print(f"   stdout: {e.stdout}")
+            print(f"   stderr: {e.stderr}")
+            return False
+            
+    def verify_build(self):
+        """Verify the built application"""
+        print("🔍 Verifying build...")
+        
+        app_path = self.dist_dir / f"{self.app_name}.app"
+        
+        if not app_path.exists():
+            print(f"❌ App not found: {app_path}")
+            return False
+            
+        # Check app structure
+        contents_dir = app_path / "Contents"
+        macos_dir = contents_dir / "MacOS"
+        
+        if not contents_dir.exists():
+            print(f"❌ Contents directory missing: {contents_dir}")
+            return False
+            
+        if not macos_dir.exists():
+            print(f"❌ MacOS directory missing: {macos_dir}")
+            return False
+            
+        # List contents
+        print(f"✅ App structure:")
+        print(f"   📁 {app_path}")
+        print(f"   📁 {contents_dir}")
+        for item in contents_dir.iterdir():
+            print(f"      📄 {item.name}")
+            
+        print(f"   📁 {macos_dir}")
+        for item in macos_dir.iterdir():
+            print(f"      🔧 {item.name}")
+            
+        return True
+        
+    def cleanup(self):
+        """Clean up temporary files"""
+        print("🧹 Cleaning up...")
+        
+        # Remove temporary config.yaml if created from template
+        config_file = self.project_dir / "config.yaml"
+        template_file = self.project_dir / "config.yaml.template"
+        
+        if config_file.exists() and template_file.exists():
+            # Only remove if it matches template (no real API keys)
+            with open(config_file, 'r') as f:
+                content = f.read()
+            if "YOUR_GEMINI_API_KEY" in content:
+                config_file.unlink()
+                print("   Removed temporary config.yaml")
+                
+        # Remove build directory but keep dist
         if self.build_dir.exists():
             shutil.rmtree(self.build_dir)
-            print("🗑️ Cleaned build directory")
+            print("   Removed build directory")
             
-        # Prepare assets
-        self.prepare_assets()
+    def build(self):
+        """Main build process"""
+        print(f"🍎 Building {self.app_name} for macOS")
+        print(f"📁 Project: {self.project_dir}")
         
-        # Build command
-        cmd = [
-            sys.executable, "-m", "PyInstaller",
-            "--clean",
-            "--noconfirm", 
-            str(self.spec_file)
-        ]
-        
-        print(f"🚀 Running: {' '.join(cmd)}")
-        
-        try:
-            result = subprocess.run(cmd, cwd=self.project_dir, 
-                                  capture_output=True, text=True)
-            
-            if result.returncode == 0:
-                print("✅ Build successful!")
-                
-                # Check if .app was created
-                app_path = self.dist_dir / "ClausoNet 4.0 Pro.app"
-                if app_path.exists():
-                    print(f"✅ .app bundle created: {app_path}")
-                    
-                    # Get app size
-                    size = self._get_directory_size(app_path)
-                    print(f"📏 App bundle size: {size / 1024 / 1024:.1f} MB")
-                    
-                    return True
-                else:
-                    print(f"❌ .app bundle not found at: {app_path}")
-                    print("Available files:")
-                    if self.dist_dir.exists():
-                        for item in self.dist_dir.iterdir():
-                            print(f"  - {item}")
-                    return False
-            else:
-                print("❌ Build failed!")
-                print("STDOUT:", result.stdout)
-                print("STDERR:", result.stderr)
-                return False
-                
-        except Exception as e:
-            print(f"❌ Build error: {e}")
-            return False
-            
-    def _get_directory_size(self, path):
-        """Tính kích thước thư mục"""
-        total_size = 0
-        try:
-            for dirpath, dirnames, filenames in os.walk(path):
-                for filename in filenames:
-                    filepath = os.path.join(dirpath, filename)
-                    if os.path.exists(filepath):
-                        total_size += os.path.getsize(filepath)
-        except Exception:
-            pass
-        return total_size
-        
-    def create_dmg(self):
-        """Tạo DMG file cho distribution"""
-        print("\n💿 Creating DMG for distribution...")
-        
-        app_path = self.dist_dir / "ClausoNet 4.0 Pro.app"
-        if not app_path.exists():
-            print("❌ .app bundle not found, cannot create DMG")
-            return None
-            
-        dmg_name = f"ClausoNet_4.0_Pro_macOS_{datetime.now().strftime('%Y%m%d_%H%M%S')}.dmg"
-        dmg_path = self.project_dir / dmg_name
-        
-        try:
-            cmd = [
-                'hdiutil', 'create',
-                '-srcfolder', str(app_path),
-                '-volname', 'ClausoNet 4.0 Pro',
-                '-format', 'UDZO',  # Compressed
-                '-imagekey', 'zlib-level=9',  # Maximum compression
-                str(dmg_path)
-            ]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            if result.returncode == 0:
-                print(f"✅ Created DMG: {dmg_path}")
-                print(f"📏 DMG size: {dmg_path.stat().st_size / 1024 / 1024:.1f} MB")
-                return dmg_path
-            else:
-                print(f"❌ DMG creation failed: {result.stderr}")
-                return None
-                
-        except Exception as e:
-            print(f"❌ Failed to create DMG: {e}")
-            return None
-            
-    def create_deployment_package(self):
-        """Tạo package deployment hoàn chỉnh"""
-        print("\n📦 Creating deployment package...")
-        
-        package_dir = self.project_dir / "macos_deployment_package"
-        
-        # Clean and create package directory
-        if package_dir.exists():
-            shutil.rmtree(package_dir)
-        package_dir.mkdir()
-        
-        # Copy .app bundle
-        app_source = self.dist_dir / "ClausoNet 4.0 Pro.app"
-        app_dest = package_dir / "ClausoNet 4.0 Pro.app"
-        
-        if app_source.exists():
-            shutil.copytree(app_source, app_dest)
-            print(f"✅ Copied .app bundle: {app_dest}")
-        else:
-            print(f"❌ .app bundle not found: {app_source}")
-            return False
-            
-        # Create installation instructions
-        readme_content = f'''# ClausoNet 4.0 Pro - macOS Installation
-
-## Installation
-
-1. **Drag and Drop**:
-   - Drag "ClausoNet 4.0 Pro.app" to your Applications folder
-   - Or run directly from this location
-
-2. **First Launch**:
-   - Double-click the app to launch
-   - If you see a security warning:
-     - Right-click → Open → Open anyway
-     - Or go to System Preferences → Security & Privacy → Allow
-
-3. **Alternative Security Fix**:
-   ```bash
-   xattr -d com.apple.quarantine "ClausoNet 4.0 Pro.app"
-   ```
-
-## System Requirements
-
-- macOS 10.14+ (Mojave or later)
-- 4GB+ RAM recommended
-- 1GB+ free disk space
-- Internet connection for video generation
-
-## Features
-
-- AI-powered video generation
-- Modern macOS-native interface
-- Automated workflow processing
-- License key activation system
-
-## Support
-
-- Email: support@clausonet.com
-- Version: 4.0.1
-- Build Date: {datetime.now().strftime("%Y-%m-%d")}
-
-## Security Notes
-
-This application is distributed outside the Mac App Store and may trigger
-Gatekeeper warnings. This is normal for developer-distributed software.
-
----
-Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Platform: macOS
-'''
-        
-        readme_file = package_dir / "README_INSTALLATION.txt"
-        with open(readme_file, 'w', encoding='utf-8') as f:
-            f.write(readme_content)
-        print(f"✅ Created installation guide: {readme_file}")
-        
-        # Create launcher script (optional)
-        launcher_script = '''#!/bin/bash
-# ClausoNet 4.0 Pro Launcher for macOS
-
-echo "🍎 Launching ClausoNet 4.0 Pro..."
-open "ClausoNet 4.0 Pro.app"
-'''
-        
-        launcher_file = package_dir / "Launch_ClausoNet.sh"
-        with open(launcher_file, 'w', encoding='utf-8') as f:
-            f.write(launcher_script)
-        os.chmod(launcher_file, 0o755)
-        print(f"✅ Created launcher script: {launcher_file}")
-        
-        print(f"✅ Deployment package created: {package_dir}")
-        return True
-        
-    def run_full_build(self):
-        """Chạy toàn bộ quá trình build cho macOS"""
-        print("🚀 Starting ClausoNet 4.0 Pro macOS build process...")
-        print("=" * 60)
-        
+        # Build steps
         steps = [
-            ("Check dependencies", self.check_dependencies),
-            ("Check ChromeDriver", self.check_chromedriver),
-            ("Build .app bundle", self.build_app),
-            ("Create DMG", self.create_dmg),
-            ("Create deployment package", self.create_deployment_package)
+            ("Clean", self.clean_build_dirs),
+            ("Check Requirements", self.check_requirements),
+            ("Prepare Config", self.prepare_config),
+            ("Prepare Icon", self.prepare_icon),
+            ("Build App", self.build_app),
+            ("Verify Build", self.verify_build),
+            ("Cleanup", self.cleanup)
         ]
         
         for step_name, step_func in steps:
-            print(f"\n📋 Step: {step_name}")
-            
-            if step_name == "Check ChromeDriver":
-                # This is not critical, just show warning
-                step_func()
-                continue
-                
-            result = step_func()
-            
-            if step_name == "Create DMG":
-                # This step returns the DMG path or None
-                if result is None:
-                    print(f"⚠️ Warning: {step_name} failed, but continuing...")
-                    continue
-            elif step_name == "Create deployment package":
-                if not result:
-                    print(f"⚠️ Warning: {step_name} failed, but .app is ready")
-                    continue
-            elif not result:
-                print(f"❌ Failed at: {step_name}")
-                print("\n💡 Please fix the issues above and try again")
+            print(f"\n🔄 {step_name}...")
+            try:
+                if not step_func():
+                    print(f"❌ {step_name} failed")
+                    return False
+            except Exception as e:
+                print(f"❌ {step_name} error: {e}")
                 return False
                 
-        print("\n" + "=" * 60)
-        print("🎉 ClausoNet 4.0 Pro macOS BUILD COMPLETE!")
-        print("=" * 60)
-        print()
-        print("📋 What was created:")
-        print(f"   📱 App: dist/ClausoNet 4.0 Pro.app")
-        print(f"   💿 DMG: ClausoNet_4.0_Pro_macOS_*.dmg")
-        print(f"   📦 Package: macos_deployment_package/")
-        print()
-        print("📋 Next steps:")
-        print("1. Test the .app locally:")
-        print("   open 'dist/ClausoNet 4.0 Pro.app'")
-        print("2. Distribute the DMG file to end users")
-        print("3. Users can drag .app to Applications folder")
-        print()
-        print("🍎 macOS Distribution Notes:")
-        print("   - First run requires security approval")
-        print("   - Provide installation instructions to users")
-        print("   - DMG file is ready for distribution")
-        print("   - No code signing required for internal distribution")
-        
+        print(f"\n🎉 Build completed successfully!")
+        print(f"📦 Output: {self.dist_dir / f'{self.app_name}.app'}")
         return True
 
 def main():
-    """Main function"""
-    try:
-        builder = ClausoNetMainBuilderMacOS()
-        
-        if len(sys.argv) > 1 and sys.argv[1] == "--quick":
-            # Quick build - minimal checks
-            print("⚡ Quick build mode")
-            builder.build_app()
-            builder.create_dmg()
-        else:
-            # Full build process
-            builder.run_full_build()
-            
-    except KeyboardInterrupt:
-        print("\n\n⚠️ Build cancelled by user")
-    except Exception as e:
-        print(f"\n❌ Build failed with error: {e}")
-        import traceback
-        traceback.print_exc()
+    """Main entry point"""
+    builder = MacOSMainBuilder()
+    success = builder.build()
+    sys.exit(0 if success else 1)
 
 if __name__ == "__main__":
     main() 

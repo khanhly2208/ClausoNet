@@ -397,7 +397,8 @@ Original script:
         """Dynamic template tạo prompts dựa trên user content với visual consistency hoàn hảo"""
         
         # 🎯 CALCULATE NUMBER OF PROMPTS BASED ON VIDEO DURATION
-        prompts_needed = max(1, min(10, video_duration // 8))  # Min 1, Max 10 prompts
+        # 🔧 FIX: Bỏ giới hạn 10 prompts, cho phép tạo đủ prompts theo thời lượng
+        prompts_needed = max(1, min(60, video_duration // 8))  # Min 1, Max 60 prompts (480s = 8 phút)
         actual_duration = prompts_needed * 8
         
         self.logger.info(f"🎬 Video Duration: {video_duration}s → {prompts_needed} prompts → {actual_duration}s actual")
@@ -419,7 +420,7 @@ CRITICAL CONSISTENCY RULES:
 3. USE THE SAME character descriptions in EVERY prompt (copy exactly)
 4. USE THE SAME environment description in EVERY prompt (copy exactly)
 5. Each prompt = 8 seconds, one action only
-6. MAXIMUM {prompts_needed} PROMPTS ONLY ({actual_duration} seconds total video)
+6. GENERATE EXACTLY {prompts_needed} PROMPTS ({actual_duration} seconds total video)
 7. PROMPT 2+ must start with "Same characters and setting:"
 
 CONSISTENCY TEMPLATE:

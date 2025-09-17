@@ -1,11 +1,11 @@
-# ClausoNet 4.0 Pro Configuration
-# Cấu hình cho các API và tính năng
+# ClausoNet 4.0 Pro Configuration Template
+# Copy this to config.yaml and fill in your API keys
 
 # API Configuration
 apis:
   gemini:
     enabled: true
-    api_key: "YOUR_GEMINI_API_KEY"  # Từ https://makersuite.google.com/app/apikey
+    api_key: "YOUR_GEMINI_API_KEY"  # Get from https://makersuite.google.com/app/apikey
     model: "gemini-2.5-flash"
     max_tokens: 8192
     temperature: 0.7
@@ -15,7 +15,7 @@ apis:
     
   openai:
     enabled: true
-    api_key: "YOUR_OPENAI_API_KEY"  # Từ https://platform.openai.com/api-keys
+    api_key: "YOUR_OPENAI_API_KEY"  # Get from https://platform.openai.com/api-keys
     model: "gpt-4-turbo"
 
 # Application Settings
@@ -64,4 +64,4 @@ performance:
   cache_enabled: true
   cache_size: "1GB"
   parallel_processing: true
-  gpu_acceleration: false  # Set to true if GPU available
+  gpu_acceleration: false  # Set to true if GPU available 
