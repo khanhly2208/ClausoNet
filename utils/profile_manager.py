@@ -364,29 +364,60 @@ class ChromeProfileManager:
         return str(self.base_profile_dir / profile_name)
     
     def close_all_chrome_instances(self):
-        """Đóng tất cả Chrome instances để tránh conflict"""
+        """🔒 DEPRECATED: Đã thay thế bởi safe cleanup trong ProductionChromeDriverManager"""
+        print("⚠️ DEPRECATED: close_all_chrome_instances() is deprecated for user safety.")
+        print("🔒 Use ProductionChromeDriverManager.cleanup() for safe Chrome process management.")
+        
+        # 🚨 CHỈ TRONG EXE MODE mới thực hiện minimal cleanup
+        if self.is_frozen:
+            print("🔒 EXE mode: Performing minimal cleanup for app stability...")
+            try:
+                # Chỉ kill ChromeDriver processes (safe to kill)
+                system = platform.system()
+                if system == "Windows":
+                    subprocess.run(['taskkill', '/F', '/IM', 'chromedriver.exe'], 
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                else:
+                    subprocess.run(['pkill', '-f', 'chromedriver'], 
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                print("✅ ChromeDriver cleanup completed (Chrome instances left untouched)")
+                time.sleep(1)  # Reduced wait time
+                
+            except Exception as e:
+                print(f"⚠️ Minimal cleanup warning: {e}")
+        else:
+            print("🔒 Development mode: No cleanup needed to preserve user Chrome sessions.")
+    
+    def safe_close_app_chrome_only(self, debug_port=None):
+        """🔒 NEW: Safely close only Chrome instances created by this app"""
         try:
-            import subprocess
-            import platform
-            
-            system = platform.system()
-            if system == "Windows":
-                # Windows
-                subprocess.run(['taskkill', '/F', '/IM', 'chrome.exe'], 
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                subprocess.run(['taskkill', '/F', '/IM', 'chromedriver.exe'], 
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            elif system == "Darwin":  # macOS
-                subprocess.run(['pkill', '-f', 'Google Chrome'], 
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            elif system == "Linux":
-                subprocess.run(['pkill', '-f', 'chrome'], 
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
-            time.sleep(2)  # Wait for processes to close
-            
+            if debug_port:
+                print(f"🔒 Safely closing Chrome instances with debug port {debug_port}...")
+                
+                import psutil
+                killed_count = 0
+                
+                for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    try:
+                        if (proc.info['name'] == 'chrome.exe' and 
+                            proc.info['cmdline'] and
+                            f'--remote-debugging-port={debug_port}' in ' '.join(proc.info['cmdline'])):
+                            proc.terminate()
+                            killed_count += 1
+                            print(f"✅ Safely closed app Chrome process PID {proc.info['pid']}")
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                
+                if killed_count > 0:
+                    print(f"✅ Safe cleanup: {killed_count} app Chrome processes closed")
+                else:
+                    print("✅ Safe cleanup: No app Chrome processes found to close")
+                    
+        except ImportError:
+            print("⚠️ psutil not available for safe Chrome cleanup")
         except Exception as e:
-            print(f"⚠️ Could not close Chrome instances: {e}")
+            print(f"⚠️ Safe Chrome cleanup error: {e}")
     
     def list_profiles(self):
         """Liệt kê tất cả profiles"""

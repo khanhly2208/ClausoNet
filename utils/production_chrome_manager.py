@@ -24,6 +24,10 @@ class ProductionChromeDriverManager:
         self.resource_manager = resource_manager
         self.system = platform.system()
         self.is_frozen = getattr(sys, 'frozen', False)
+        
+        # 🔒 TRACK CHROME PROCESSES: Lưu PID của Chrome processes do app tạo ra
+        self.app_chrome_processes = []  # List of Process objects or PIDs
+        self.debug_port = 9222  # Default debug port
 
         # ChromeDriver paths
         self.drivers_dir = Path(self.resource_manager.user_data_dir) / "drivers"
@@ -202,9 +206,16 @@ class ProductionChromeDriverManager:
         if headless:
             options.add_argument("--headless")
 
-        # Debug port
+        # Debug port - 🔒 USE UNIQUE PORT để identify Chrome của app
         if debug_port:
-            options.add_argument(f"--remote-debugging-port={debug_port}")
+            self.debug_port = debug_port
+        else:
+            # Tạo unique debug port để identify Chrome process của app
+            import random
+            self.debug_port = 9222 + random.randint(100, 999)
+        
+        options.add_argument(f"--remote-debugging-port={self.debug_port}")
+        print(f"🔒 Using unique debug port: {self.debug_port}")
 
         # Production optimizations
         options.add_argument("--no-first-run")
@@ -241,6 +252,24 @@ class ProductionChromeDriverManager:
 
             # Create driver
             driver = webdriver.Chrome(service=service, options=options)
+
+            # 🔒 TRACK CHROME PROCESS: Lưu lại Chrome process được tạo bởi app
+            try:
+                import psutil
+                # Find Chrome processes với debug port của app
+                for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    try:
+                        if (proc.info['name'] == 'chrome.exe' and 
+                            proc.info['cmdline'] and
+                            f'--remote-debugging-port={self.debug_port}' in ' '.join(proc.info['cmdline'])):
+                            self.app_chrome_processes.append(proc.info['pid'])
+                            print(f"🔒 Tracked app Chrome process: PID {proc.info['pid']}")
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+            except ImportError:
+                print("⚠️ psutil not available - using fallback process tracking")
+            except Exception as e:
+                print(f"⚠️ Process tracking error: {e}")
 
             # Anti-detection script
             driver.execute_script("""
@@ -281,19 +310,98 @@ class ProductionChromeDriverManager:
         return True
 
     def cleanup(self):
-        """Dọn dẹp driver cũ"""
+        """🔒 SAFE CLEANUP: Chỉ dọn dẹp Chrome processes của app, KHÔNG đụng Chrome của user"""
         try:
-            # Kill Chrome processes
-            if self.system == "Windows":
-                subprocess.run(['taskkill', '/F', '/IM', 'chrome.exe'],
-                             capture_output=True)
-                subprocess.run(['taskkill', '/F', '/IM', 'chromedriver.exe'],
-                             capture_output=True)
+            cleaned_count = 0
+            failed_count = 0
+            
+            # Method 1: Kill tracked Chrome processes by PID
+            if self.app_chrome_processes:
+                print(f"🔒 Cleaning up {len(self.app_chrome_processes)} tracked Chrome processes...")
+                
+                try:
+                    import psutil
+                    for pid in self.app_chrome_processes[:]:  # Copy list to avoid modification during iteration
+                        try:
+                            proc = psutil.Process(pid)
+                            if proc.is_running() and proc.name() in ['chrome.exe', 'Google Chrome']:
+                                proc.terminate()  # Gentle termination first
+                                try:
+                                    proc.wait(timeout=3)  # Wait up to 3 seconds
+                                except psutil.TimeoutExpired:
+                                    proc.kill()  # Force kill if needed
+                                print(f"✅ Cleaned Chrome process PID {pid}")
+                                cleaned_count += 1
+                            self.app_chrome_processes.remove(pid)  # Remove from tracking
+                        except (psutil.NoSuchProcess, psutil.AccessDenied, ValueError):
+                            try:
+                                self.app_chrome_processes.remove(pid)
+                            except ValueError:
+                                pass
+                            continue
+                        except Exception as e:
+                            print(f"⚠️ Failed to clean process {pid}: {e}")
+                            failed_count += 1
+                            
+                except ImportError:
+                    print("⚠️ psutil not available for safe cleanup")
+                    # Fallback: Kill by debug port signature
+                    self._fallback_cleanup_by_port()
+                    
             else:
-                subprocess.run(['pkill', '-f', 'chrome'], capture_output=True)
-                subprocess.run(['pkill', '-f', 'chromedriver'], capture_output=True)
+                print("🔒 No tracked Chrome processes to clean up")
 
-            print("✅ Chrome processes cleaned up")
+            # Method 2: Kill ChromeDriver processes (these are always safe to kill)
+            try:
+                if self.system == "Windows":
+                    result = subprocess.run(['taskkill', '/F', '/IM', 'chromedriver.exe'],
+                                          capture_output=True, text=True)
+                    if result.returncode == 0:
+                        print("✅ ChromeDriver processes cleaned up")
+                else:
+                    result = subprocess.run(['pkill', '-f', 'chromedriver'], 
+                                          capture_output=True, text=True)
+                    if result.returncode == 0:
+                        print("✅ ChromeDriver processes cleaned up")
+            except Exception as e:
+                print(f"⚠️ ChromeDriver cleanup warning: {e}")
+
+            if cleaned_count > 0:
+                print(f"✅ SAFE CLEANUP completed: {cleaned_count} app Chrome processes cleaned, {failed_count} failed")
+            else:
+                print("✅ SAFE CLEANUP completed: No Chrome processes to clean")
+                
+            # Clear tracking list
+            self.app_chrome_processes.clear()
 
         except Exception as e:
-            print(f"⚠️ Cleanup warning: {e}")
+            print(f"⚠️ Safe cleanup error: {e}")
+            
+    def _fallback_cleanup_by_port(self):
+        """Fallback cleanup method using command line signature"""
+        try:
+            if self.system == "Windows":
+                # Use wmic to find Chrome with our debug port
+                cmd = f'wmic process where "name=\'chrome.exe\' and commandline like \'%--remote-debugging-port={self.debug_port}%\'" get processid /value'
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                
+                if result.returncode == 0:
+                    for line in result.stdout.split('\n'):
+                        if line.startswith('ProcessId='):
+                            pid = line.split('=')[1].strip()
+                            if pid.isdigit():
+                                subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True)
+                                print(f"✅ Fallback killed Chrome PID {pid}")
+            else:
+                # Linux/macOS: Use pgrep with port signature
+                cmd = f'pgrep -f "chrome.*--remote-debugging-port={self.debug_port}"'
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                
+                if result.returncode == 0:
+                    for pid in result.stdout.strip().split('\n'):
+                        if pid.strip().isdigit():
+                            subprocess.run(['kill', '-TERM', pid.strip()], capture_output=True)
+                            print(f"✅ Fallback killed Chrome PID {pid}")
+                            
+        except Exception as e:
+            print(f"⚠️ Fallback cleanup error: {e}")

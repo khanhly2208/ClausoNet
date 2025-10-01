@@ -42,10 +42,26 @@ jobs:
         
     - name: 🔐 Check for hardcoded API keys
       run: |
+        echo "🔍 Scanning for various API key patterns..."
+        
+        # Check Google API keys
         if grep -r "AIzaSy" . --exclude-dir=.git --exclude-dir=.github; then
+          echo "⚠️ WARNING: Google API keys found in code!"
+          exit 1
+        fi
+        
+        # Check OpenAI API keys
+        if grep -r "sk-[a-zA-Z0-9]\{48\}" . --exclude-dir=.git --exclude-dir=.github; then
+          echo "⚠️ WARNING: OpenAI API keys found in code!"
+          exit 1
+        fi
+        
+        # Check other common patterns
+        if grep -r -E "(api_key|apikey|api-key)\s*[:=]\s*['\"][^'\"]{20,}['\"]" . --exclude-dir=.git --exclude-dir=.github; then
           echo "⚠️ WARNING: Potential API keys found in code!"
           exit 1
         fi
+        
         echo "✅ No hardcoded API keys detected"
 
   build-macos:
@@ -132,8 +148,13 @@ jobs:
           cp config.yaml.template config.yaml
           echo "✅ Config template copied"
           
+          # Enhanced API key checking in config
           if grep -q "AIzaSy" config.yaml; then
-            echo "❌ API key found in config!"
+            echo "❌ Google API key found in config!"
+            exit 1
+          fi
+          if grep -q "sk-[a-zA-Z0-9]\{48\}" config.yaml; then
+            echo "❌ OpenAI API key found in config!"
             exit 1
           fi
         fi
@@ -235,14 +256,33 @@ jobs:
         )
         EOF
         
-        # Build using the spec file
+        # Build using the spec file with better error handling
         echo "📝 Building with custom spec file..."
-        pyinstaller --clean --noconfirm clausonet_macos.spec
+        if ! pyinstaller --clean --noconfirm clausonet_macos.spec; then
+          echo "❌ PyInstaller build failed!"
+          echo "📋 Build logs:"
+          cat build/clausonet_macos/warn-clausonet_macos.txt || echo "No warning log found"
+          exit 1
+        fi
         
-        # Verify build
+        # Verify build with comprehensive checks
         if [ -d "dist/ClausoNet 4.0 Pro.app" ]; then
           echo "✅ Main app built successfully"
           ls -la "dist/ClausoNet 4.0 Pro.app"
+          
+          # Check app structure
+          if [ ! -f "dist/ClausoNet 4.0 Pro.app/Contents/MacOS/ClausoNet 4.0 Pro" ]; then
+            echo "❌ Main executable missing!"
+            exit 1
+          fi
+          
+          # Test app can be launched (dry run)
+          echo "🧪 Testing app launch..."
+          if ! "dist/ClausoNet 4.0 Pro.app/Contents/MacOS/ClausoNet 4.0 Pro" --version > /dev/null 2>&1; then
+            echo "⚠️ App may have runtime issues (version check failed)"
+          else
+            echo "✅ App basic launch test passed"
+          fi
         else
           echo "❌ Build failed - checking dist directory:"
           ls -la dist/ || echo "No dist directory found"
@@ -288,6 +328,7 @@ jobs:
           ls -la "dist/ClausoNet 4.0 Pro.app/Contents/"
           ls -la "dist/ClausoNet 4.0 Pro.app/Contents/MacOS/"
           
+          # Check if app can be inspected
           codesign -dv --verbose=4 "dist/ClausoNet 4.0 Pro.app" || echo "⚠️ App not signed"
         else
           echo "❌ Main application build failed"
@@ -299,6 +340,13 @@ jobs:
         else
           echo "⚠️ Admin tools build may have failed"
         fi
+        
+    - name: 🔐 Code Signing Note
+      run: |
+        echo "📋 Code Signing Information:"
+        echo "To enable code signing, add MACOS_CERTIFICATE_NAME to repository secrets"
+        echo "Then uncomment and modify the signing commands in this workflow"
+        echo "⚠️ Apps built without signing will show security warnings on first launch"
         
     - name: 💿 Create DMG files
       run: |
@@ -402,7 +450,7 @@ jobs:
     name: 🎉 Create macOS Release
     needs: build-macos
     runs-on: ubuntu-latest
-    if: false  # Temporarily disabled due to permissions issue
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     permissions:
       contents: write
       pull-requests: read

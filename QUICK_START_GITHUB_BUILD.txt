@@ -1,0 +1,316 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                                                                               ║
+║   🍎 ClausoNet 4.0 Pro - Quick Start Guide for GitHub macOS Build          ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+📋 KIỂM TRA SẴN SÀNG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Chạy script kiểm tra:
+
+    python3 check_build_readiness.py
+
+Nếu tất cả ✅ → Tiếp tục bước tiếp theo
+Nếu có ❌ → Fix errors trước khi build
+
+
+🚀 LỆNH BUILD NHANH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ METHOD 1: Manual Trigger (Khuyến nghị)                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Bước 1: Đảm bảo code đã push lên GitHub
+    
+    cd ClausoNet4.0
+    git add .
+    git commit -m "Ready for macOS build"
+    git push origin main
+
+Bước 2: Vào GitHub Repository
+    
+    → Mở trình duyệt
+    → https://github.com/YOUR_USERNAME/ClausoNet4.0
+
+Bước 3: Mở Actions tab
+    
+    → Click tab "Actions" ở đầu trang
+
+Bước 4: Chọn workflow
+    
+    → Click "🍎 macOS Build - ClausoNet 4.0 Pro"
+
+Bước 5: Run workflow
+    
+    → Click nút "Run workflow" (bên phải)
+    → Select branch: main
+    → Select build type: release
+    → Click "Run workflow" (xanh)
+
+Bước 6: Đợi build hoàn thành
+    
+    ⏱️  Thời gian: ~20-30 phút
+    📊 Monitor tiến trình trên trang Actions
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ METHOD 2: Push to Trigger (Tự động)                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Đơn giản push lên main branch:
+
+    cd ClausoNet4.0
+    git add .
+    git commit -m "Trigger macOS build"
+    git push origin main
+
+→ Workflow tự động chạy ngay!
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ METHOD 3: Via GitHub CLI (Cho advanced users)                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Cài đặt GitHub CLI (nếu chưa có):
+
+    # macOS
+    brew install gh
+    
+    # Windows
+    winget install --id GitHub.cli
+
+Login:
+
+    gh auth login
+
+Chạy workflow:
+
+    gh workflow run "🍎 macOS Build - ClausoNet 4.0 Pro" --ref main
+
+Check status:
+
+    gh run list --workflow="macos-build-fixed.yml"
+    gh run view --log
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ METHOD 4: Create Release Tag (Tự động build + release)                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Tạo version tag:
+
+    git tag -a v1.0.0 -m "Release ClausoNet 4.0 Pro v1.0.0"
+    git push origin v1.0.0
+
+→ Workflow chạy + Tạo GitHub Release tự động!
+
+
+📥 TẢI ARTIFACTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sau khi build xong:
+
+Cách 1: Từ Actions
+    
+    1. Vào Actions tab
+    2. Click vào workflow run đã hoàn thành
+    3. Scroll xuống "Artifacts"
+    4. Download "macos-build"
+    5. Extract ZIP file
+
+Cách 2: Từ Releases (nếu có tag)
+    
+    1. Vào Releases tab
+    2. Click vào release mới nhất
+    3. Download "ClausoNet-4.0-Pro-macOS.zip"
+
+Nội dung artifact:
+    
+    ✅ ClausoNet 4.0 Pro.app
+    ✅ ClausoNet-4.0-Pro-macOS.dmg
+    ✅ admin_tools/ClausoNet Admin Key Generator.app
+    ✅ ClausoNet-AdminTools-macOS.dmg
+    ✅ config.yaml (template)
+    ✅ INSTALLATION_GUIDE.txt
+
+
+🧪 TEST ỨNG DỤNG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Trên macOS:
+
+Bước 1: Extract artifact
+    
+    unzip macos-build.zip
+    cd macos-build
+
+Bước 2: Remove quarantine
+    
+    xattr -d com.apple.quarantine "ClausoNet 4.0 Pro.app"
+
+Bước 3: Launch app
+    
+    open "ClausoNet 4.0 Pro.app"
+
+Nếu gặp lỗi "damaged":
+    
+    xattr -cr "ClausoNet 4.0 Pro.app"
+    chmod -R 755 "ClausoNet 4.0 Pro.app"
+
+Hoặc install bằng DMG:
+    
+    open ClausoNet-4.0-Pro-macOS.dmg
+    # Drag .app to Applications folder
+
+
+📊 MONITOR BUILD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Build stages:
+
+    🔒 Security Scan        ~2 mins
+       └─ Check for secrets, API keys
+    
+    🍎 macOS Build         ~15-25 mins
+       ├─ Setup Python 3.11
+       ├─ Install dependencies
+       ├─ Build main app
+       ├─ Build admin tools
+       ├─ Create DMG files
+       └─ Package everything
+    
+    🎉 Create Release      ~3 mins
+       └─ Upload to GitHub Releases
+    
+    📊 Build Summary       ~1 min
+       └─ Generate report
+
+Total: ~20-30 minutes
+
+Check build logs:
+    
+    → Click vào job đang chạy
+    → Xem từng step
+    → Tìm ✅ (success) hoặc ❌ (error)
+
+
+🐛 TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Issue: Workflow không chạy                                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Fix:
+    → Settings → Actions → General
+    → Allow all actions and reusable workflows
+    → Save
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Issue: Security scan failed                                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Lỗi: "API keys found in code!"
+
+Fix:
+    → Check config.yaml không có real API keys
+    → Chỉ dùng config.yaml.template với placeholder
+    → git rm --cached config.yaml (nếu đã commit)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Issue: Build failed - Missing module                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Lỗi: "ImportError: No module named 'xxx'"
+
+Fix:
+    → Add vào requirements.txt:
+      echo "xxx>=1.0.0" >> requirements.txt
+    → Commit và push lại
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Issue: Icon conversion failed                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Lỗi: "Icon creation failed"
+
+Fix:
+    → Đảm bảo assets/icon.png tồn tại
+    → Hoặc workflow sẽ tạo default icon tự động
+    → Build vẫn có thể thành công
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Issue: App không launch trên macOS                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Lỗi: "From unidentified developer"
+
+Fix:
+    xattr -d com.apple.quarantine "ClausoNet 4.0 Pro.app"
+    
+Hoặc:
+    System Preferences → Security & Privacy → Click "Open Anyway"
+
+
+📚 TÀI LIỆU THAM KHẢO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Đọc thêm:
+    
+    ✅ BUILD_MACOS_GUIDE.md        - Hướng dẫn chi tiết đầy đủ
+    ✅ check_build_readiness.py    - Script kiểm tra readiness
+    ✅ .github/workflows/          - Workflow configuration
+    ✅ build_main_macos.py         - Build script cho main app
+    ✅ admin_tools/build_admin_key_macos.py - Build script cho admin tools
+
+GitHub Actions:
+    → https://docs.github.com/actions
+
+PyInstaller:
+    → https://pyinstaller.org/
+
+CustomTkinter:
+    → https://github.com/TomSchimansky/CustomTkinter
+
+
+✨ TÓM TẮT 3 BƯỚC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  KIỂM TRA
+    python3 check_build_readiness.py
+
+2️⃣  PUSH CODE
+    git add .
+    git commit -m "Ready for macOS build"
+    git push origin main
+
+3️⃣  TRIGGER BUILD
+    GitHub → Actions → Run workflow "🍎 macOS Build"
+
+⏱️  Đợi 20-30 phút → Download artifacts → Test!
+
+
+🎉 HOÀN TẤT!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sau khi download và test thành công:
+
+    ✅ ClausoNet 4.0 Pro.app - Ready for macOS distribution
+    ✅ Admin Tools - For license key generation
+    ✅ DMG files - For easy installation
+    ✅ Documentation - Installation guides included
+
+📧 Support: Xem BUILD_MACOS_GUIDE.md để biết thêm chi tiết
+
+🍎 Happy Building on macOS!
+
+Generated: 2025-10-01
+Version: 1.0
+Platform: macOS 10.14+
+

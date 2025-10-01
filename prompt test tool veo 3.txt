@@ -1,0 +1,425 @@
+{
+  "scene_number": 1,
+  "duration_seconds": 8,
+  "character": [],
+  "environment": {
+    "location": "Mountain range at dawn",
+    "details": [
+      "Early morning with golden sunrise",
+      "Clear sky with faint morning mist",
+      "Warm directional sunlight from the horizon",
+      "Jagged rocky terrain with sparse vegetation",
+      "Foreground boulders framing the view",
+      "Distant mountains fading into haze",
+      "Scattered wooden scaffolds hinting at construction",
+      "Palette of gold, gray, and muted green",
+      "Soft mist rolling across valleys",
+      "Long mountain shadows giving depth"
+    ]
+  },
+  "action": "The camera sweeps slowly across vast mountains as sunlight breaks, revealing signs of early construction on ridges.",
+  "dialogue": null,
+  "style": {
+    "camera": "Epic wide-angle aerial shot, slow sweeping pan across mountains, deep focus with long horizon, rhythmic fade into the scene.",
+    "tone": "Cinematic and majestic",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 2,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "worker_01",
+      "type": "Common laborer",
+      "appearance": "A strong middle-aged man with tanned skin, rough hands, and a lean muscular build. He wears a coarse brown hemp tunic tied with rope, a faded cloth headband, and simple straw sandals. His posture is upright with determination, sweat already glistening on his forehead as he grips a wooden tool."
+    },
+    {
+      "id": "worker_02",
+      "type": "Common laborer",
+      "appearance": "A younger woman with sun-darkened skin and sharp cheekbones, dressed in a pale gray linen robe with rolled-up sleeves, her long black hair tied into a tight bun. She carries a wicker basket filled with stones. Her movements are steady and purposeful, showing resilience."
+    }
+  ],
+  "environment": {
+    "location": "Base of mountain construction site",
+    "details": [
+      "Morning sunlight casting long shadows",
+      "Cool mountain air with drifting dust",
+      "Warm angled light highlighting workers",
+      "Packed dirt ground scattered with tools",
+      "Foreground with baskets and wooden carts",
+      "Background with tents and smoke from campfires",
+      "Stacks of stone blocks waiting to be used",
+      "Muted earth tones mixed with warm sunlight",
+      "Dust particles catching in the air",
+      "Crowds creating depth with layers of movement"
+    ]
+  },
+  "action": "Groups of workers gather in formation, some carrying stones, others tools, while overseers shout directions, creating an atmosphere of preparation.",
+  "dialogue": null,
+  "style": {
+    "camera": "Medium wide shot from ground level, steady dolly movement through the crowd, shallow depth of field focusing on faces, lively editing rhythm.",
+    "tone": "Epic and communal",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 3,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "worker_01",
+      "type": "Common laborer",
+      "appearance": "A strong middle-aged man with tanned skin, rough hands, and a lean muscular build. He wears a coarse brown hemp tunic tied with rope, a faded cloth headband, and simple straw sandals. His posture is upright with determination, sweat already glistening on his forehead as he grips a wooden tool."
+    },
+    {
+      "id": "worker_02",
+      "type": "Common laborer",
+      "appearance": "A younger woman with sun-darkened skin and sharp cheekbones, dressed in a pale gray linen robe with rolled-up sleeves, her long black hair tied into a tight bun. She carries a wicker basket filled with stones. Her movements are steady and purposeful, showing resilience."
+    }
+  ],
+  "environment": {
+    "location": "Construction foundation site",
+    "details": [
+      "Morning with sun slightly higher in the sky",
+      "Clear sky with soft haze in distance",
+      "Bright directional sunlight casting strong shadows",
+      "Uneven rocky ground being leveled",
+      "Foreground workers lifting large stones",
+      "Background scaffolding and more workers",
+      "Wooden levers and primitive pulleys",
+      "Earthy browns, grays, and muted yellows",
+      "Dust rising from stone movement",
+      "Perspective lines leading toward the foundation trench"
+    ]
+  },
+  "action": "Two workers strain together to lower a massive stone block into place, the thud echoing as the first foundation row takes shape.",
+  "dialogue": null,
+  "style": {
+    "camera": "Close tracking shot moving alongside the workers, low angle emphasizing effort, narrow depth of field focusing on the stone, cut rhythm matches the stone’s impact.",
+    "tone": "Heroic and determined",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 4,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "worker_03",
+      "type": "Ox cart driver",
+      "appearance": "An older man with a wiry frame, grizzled beard, and sun-worn skin. He wears a patched dark-blue robe with a rope belt, straw sandals, and a conical bamboo hat tilted low over his eyes. His hands are calloused from years of work as he grips the reins of an ox cart."
+    }
+  ],
+  "environment": {
+    "location": "Mountain path",
+    "details": [
+      "Late morning with bright sunlight",
+      "Clear blue sky above rugged cliffs",
+      "Sunlight casting hard shadows along the trail",
+      "Uneven dirt road with scattered stones",
+      "Foreground oxen pulling heavy carts",
+      "Background ridges with workers moving in distance",
+      "Wooden carts loaded with large stone blocks",
+      "Earthy browns contrasted with oxen’s dark hides",
+      "Dust clouds stirred by wheels and hooves",
+      "Steep perspective showing slope and depth"
+    ]
+  },
+  "action": "Oxen strain forward pulling a creaking cart stacked with stone blocks, the driver shouting commands while wheels bump over rocks.",
+  "dialogue": null,
+  "style": {
+    "camera": "Tracking side shot following the cart, wide frame showing scale of oxen and cargo, low handheld shake for realism, deep focus capturing mountain slope.",
+    "tone": "Epic and laborious",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 5,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "overseer_01",
+      "type": "Imperial overseer",
+      "appearance": "A tall man in his forties with sharp features, fairer skin compared to workers, and a stern gaze. He wears layered silk robes dyed dark red and black with embroidered dragon motifs, a thin jade belt, and a black hat with extended wings. His posture is commanding, holding a bamboo scroll in one hand and gesturing with the other."
+    }
+  ],
+  "environment": {
+    "location": "Rocky outcrop overlooking construction site",
+    "details": [
+      "Sun high in the sky with strong daylight",
+      "Clear atmosphere with sharp visibility",
+      "Harsh light casting crisp shadows",
+      "Rocky ledge overlooking the scene",
+      "Foreground with the overseer’s flowing robes",
+      "Background filled with bustling workers",
+      "Wooden scaffolds and half-built wall sections",
+      "Red and brown tones contrasting with gray stone",
+      "Occasional dust clouds drifting upward",
+      "Wide horizon emphasizing scale"
+    ]
+  },
+  "action": "The overseer raises his arm and points toward a section of the wall, shouting orders as groups of workers respond and shift direction.",
+  "dialogue": null,
+  "style": {
+    "camera": "Low-angle shot looking up at the overseer, then sweeping down to reveal the workers, wide depth of field with dramatic tilt movement.",
+    "tone": "Commanding and authoritative",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 6,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "worker_01",
+      "type": "Common laborer",
+      "appearance": "A strong middle-aged man with tanned skin, rough hands, and a lean muscular build. He wears a coarse brown hemp tunic tied with rope, a faded cloth headband, and simple straw sandals. His posture is upright with determination, sweat already glistening on his forehead as he grips a wooden tool."
+    },
+    {
+      "id": "worker_02",
+      "type": "Common laborer",
+      "appearance": "A younger woman with sun-darkened skin and sharp cheekbones, dressed in a pale gray linen robe with rolled-up sleeves, her long black hair tied into a tight bun. She carries a wicker basket filled with stones. Her movements are steady and purposeful, showing resilience."
+    }
+  ],
+  "environment": {
+    "location": "Emerging wall section",
+    "details": [
+      "Afternoon sun with golden tones",
+      "Clear skies with faint drifting clouds",
+      "Warm light emphasizing stone textures",
+      "Stacked stone blocks forming rising wall",
+      "Foreground workers placing stones in alignment",
+      "Background stretches of scaffolding and ropes",
+      "Wooden ladders leaning against the wall",
+      "Gray and sandy tones with golden sunlight",
+      "Stone dust in the air catching light",
+      "Long shadows cast by the growing wall"
+    ]
+  },
+  "action": "Workers position and hammer stones into place, a rough wall rising steadily as others carry materials along scaffolding.",
+  "dialogue": null,
+  "style": {
+    "camera": "Wide crane shot rising upward along the wall, capturing both workers below and stones being lifted, slow majestic pace emphasizing growth.",
+    "tone": "Grand and inspiring",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 7,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "worker_01",
+      "type": "Common laborer",
+      "appearance": "A strong middle-aged man with tanned skin, rough hands, and a lean muscular build. He wears a coarse brown hemp tunic tied with rope, a faded cloth headband, and simple straw sandals. His posture is upright with determination, sweat already glistening on his forehead as he grips a wooden tool."
+    },
+    {
+      "id": "worker_02",
+      "type": "Common laborer",
+      "appearance": "A younger woman with sun-darkened skin and sharp cheekbones, dressed in a pale gray linen robe with rolled-up sleeves, her long black hair tied into a tight bun. She carries a wicker basket filled with stones. Her movements are steady and purposeful, showing resilience."
+    }
+  ],
+  "environment": {
+    "location": "Stone transport line",
+    "details": [
+      "Afternoon sun with high intensity",
+      "Clear bright sky with minimal haze",
+      "Strong sunlight creating glistening sweat highlights",
+      "Packed dirt ground with scattered footprints",
+      "Foreground close view of hands passing stones",
+      "Background long line of laborers extending into distance",
+      "Simple wooden buckets and baskets filled with stones",
+      "Warm earthy browns and gray tones of stone",
+      "Occasional dust rising from dropped stones",
+      "Depth shown through diminishing figures in line"
+    ]
+  },
+  "action": "Dozens of workers form a human chain, lifting and passing heavy stones from hand to hand, their rhythm synchronized like a pulse of determination.",
+  "dialogue": null,
+  "style": {
+    "camera": "Tracking lateral shot moving along the line of workers, medium framing on hands and faces, shallow depth highlighting effort, rhythmic cuts synchronized with stone passing.",
+    "tone": "Unified and determined",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 8,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "drummer_01",
+      "type": "Motivational drummer",
+      "appearance": "A broad-shouldered man with shaved head, bare arms glistening with sweat, wearing a sleeveless dark brown tunic and a red sash tied around his waist. He wields thick wooden drumsticks, striking a massive war drum strapped with bronze studs. His eyes are fierce and his movements powerful."
+    }
+  ],
+  "environment": {
+    "location": "Cliffside overlooking workers",
+    "details": [
+      "Late afternoon sunlight slanting across cliff",
+      "Sky glowing with amber tones",
+      "Warm golden light accentuating dust in air",
+      "Cliff ledge with large drum mounted on wooden frame",
+      "Foreground showing muscular drummer in action",
+      "Background echoing valleys and visible working lines",
+      "Props include banners fluttering in wind",
+      "Palette of red, gold, and dark wood",
+      "Dust and echoes of sound vibrating",
+      "Perspective depth with drum elevated above workers"
+    ]
+  },
+  "action": "The drummer slams his sticks against the drum, sending thunderous booms echoing through the valley, workers below lifting stones in time with the rhythm.",
+  "dialogue": null,
+  "style": {
+    "camera": "Low close-up on drummer’s arms striking drum, cut to wide aerial shot showing echoes reaching workers below, quick editing rhythm matching drumbeats.",
+    "tone": "Powerful and inspiring",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 9,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "child_01",
+      "type": "Young village boy",
+      "appearance": "A slim boy of about 8 years old, with bright curious eyes and tousled black hair tied with a simple cloth strip. He wears a faded beige tunic that hangs loosely, bare feet covered in dust. His expression is wide-eyed wonder as he gazes downward."
+    },
+    {
+      "id": "child_02",
+      "type": "Young village girl",
+      "appearance": "A girl around 10 years old, with neatly braided hair tied with red string, wearing a pale green cotton robe with short sleeves. She clutches a small wooden toy in her hands while standing barefoot on rocky ground, her smile mixing admiration and pride."
+    }
+  ],
+  "environment": {
+    "location": "Mountain slope overlooking construction",
+    "details": [
+      "Late afternoon with golden sunlight",
+      "Sky painted in warm orange hues",
+      "Soft angled light creating silhouettes",
+      "Rocky slope with sparse wild grass",
+      "Foreground children leaning forward in awe",
+      "Background distant workers and rising wall",
+      "Props include a carved wooden toy in hand",
+      "Dominant tones of gold, orange, and earthy brown",
+      "Thin mountain breeze rustling hair and grass",
+      "Depth enhanced by scale between children and wall"
+    ]
+  },
+  "action": "Two children stand side by side, pointing and whispering excitedly as they watch the wall stretch across the horizon.",
+  "dialogue": null,
+  "style": {
+    "camera": "Over-the-shoulder shot behind children framing the wall below, slow zoom outward to emphasize vast scale, soft focus blending horizon.",
+    "tone": "Hopeful and awe-inspiring",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 10,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "worker_01",
+      "type": "Common laborer",
+      "appearance": "A strong middle-aged man with tanned skin, rough hands, and a lean muscular build. He wears a coarse brown hemp tunic tied with rope, a faded cloth headband, and simple straw sandals. His forehead glistens with sweat, veins standing out as he strains against the weight of a stone."
+    }
+  ],
+  "environment": {
+    "location": "Stone lifting zone",
+    "details": [
+      "Afternoon sunlight overhead with harsh glare",
+      "Clear blue sky with almost no clouds",
+      "Bright directional light shining directly on sweaty skin",
+      "Packed dirt ground scattered with tools",
+      "Foreground beads of sweat dripping from worker’s chin",
+      "Background other workers straining with similar effort",
+      "Large stone blocks partially stacked",
+      "Palette of dusty browns, gray stone, and golden skin tones",
+      "Dust rising with every movement",
+      "Shadows deepened under the workers’ bodies"
+    ]
+  },
+  "action": "A laborer bends low, arms trembling as he hefts a heavy stone onto his back, sweat dripping down his face before he staggers forward with determination.",
+  "dialogue": null,
+  "style": {
+    "camera": "Tight close-up on the worker’s face and shoulders, sweat glistening, then tilt downward to reveal the heavy stone, handheld shake adding intensity.",
+    "tone": "Intense and determined",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 11,
+  "duration_seconds": 8,
+  "character": [
+    {
+      "id": "worker_02",
+      "type": "Common laborer",
+      "appearance": "A younger woman with sun-darkened skin and sharp cheekbones, dressed in a pale gray linen robe with rolled-up sleeves, her long black hair tied into a tight bun. She sits cross-legged, holding a wooden bowl of rice, her expression calm and tired yet peaceful."
+    },
+    {
+      "id": "worker_03",
+      "type": "Ox cart driver",
+      "appearance": "An older man with a wiry frame, grizzled beard, and sun-worn skin. He wears a patched dark-blue robe with a rope belt, straw sandals, and a conical bamboo hat resting beside him. His posture is relaxed as he eats slowly with chopsticks."
+    }
+  ],
+  "environment": {
+    "location": "Campfire rest area",
+    "details": [
+      "Evening twilight sky glowing purple and orange",
+      "Cool mountain breeze with faint smoke scent",
+      "Soft firelight flickering warmly",
+      "Packed earth ground with scattered mats",
+      "Foreground steaming bowls of rice and simple vegetables",
+      "Background groups of workers chatting quietly",
+      "Props include clay jars and wooden chopsticks",
+      "Warm tones of fire contrasting cool evening blue",
+      "Smoke rising in gentle spirals",
+      "Depth enhanced by fading mountain silhouette"
+    ]
+  },
+  "action": "Workers sit in small circles, quietly sharing rice and vegetables by the fire, their tired faces softening in the glow of companionship.",
+  "dialogue": null,
+  "style": {
+    "camera": "Medium group shot with soft focus, warm color grading emphasizing firelight, gentle slow pans across faces, steady rhythm matching quiet atmosphere.",
+    "tone": "Peaceful and human",
+    "quality": "High-quality cinematic video"
+  }
+}
+
+{
+  "scene_number": 12,
+  "duration_seconds": 8,
+  "character": [],
+  "environment": {
+    "location": "Construction site at night",
+    "details": [
+      "Clear night sky filled with bright stars",
+      "Cool mountain air with silence broken by faint winds",
+      "Soft moonlight casting silver glow",
+      "Stone wall silhouette standing tall",
+      "Foreground faint outline of sleeping workers under blankets",
+      "Background half-finished wall extending into darkness",
+      "Props include abandoned tools resting against stones",
+      "Palette of deep blues, silvers, and shadows",
+      "Ambient glow of stars mirrored in eyes of night animals",
+      "Perspective showing vast emptiness of night sky against wall"
+    ]
+  },
+  "action": "The camera glides silently over the sleeping camp, then rises slowly to reveal the wall stretching under the vast starry sky.",
+  "dialogue": null,
+  "style": {
+    "camera": "Slow aerial crane shot beginning close to sleeping figures, lifting upward into a wide star-filled panorama, steady rhythm with long takes.",
+    "tone": "Majestic and tranquil",
+    "quality": "High-quality cinematic video"
+  }
+}

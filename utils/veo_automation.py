@@ -26,56 +26,39 @@ class VeoAutomation:
     SELECTORS = {
         # Multiple selectors for better reliability
         "new_project": [
-            "//*[@id='__next']/div[2]/div/div[1]/button",
-            "//button[contains(text(), 'New project') or contains(text(), 'Create') or contains(text(), '+')]",
-            "//button[@aria-label='New project' or @aria-label='Create new project']",
-            "//div[contains(@class, 'create')]//button",
-            "//*[contains(@class, 'new-project')]//button",
-            # Additional fallbacks for dynamic content
-            "//button[contains(@class, 'primary') and (contains(text(), 'New') or contains(text(), 'Create'))]",
-            "//div[contains(@class, 'header')]//button[1]",
-            "//main//button[1]",
-            "//button[position()=1 and contains(@class, 'button')]",
-            "//*[@role='button'][contains(text(), 'New') or contains(text(), 'Create') or contains(text(), '+')]"
+            "//button[contains(text(), 'New project') or contains(text(), 'Create')]",
+            "button[aria-label*='New project']",
+            "//main//button:first-child"
         ],
         "type_dropdown": [
-            "//*[@id='__next']/div[2]/div[1]/div/div[2]/div/div[2]/div/div[1]/div[1]/button/div[1]/i/font/font",
-            "//button[contains(@aria-label, 'type') or contains(@aria-label, 'Type')]",
-            "//div[contains(text(), 'Text to Video') or contains(text(), 'Image to Video')]//parent::button",
-            "//button[.//span[contains(text(), 'Text to Video') or contains(text(), 'Image to Video')]]",
-            "//*[contains(@class, 'type')]//button"
+            "//button[contains(text(), 'Text to Video')]",
+            "button[aria-label*='type']",
+            "//button[.//span[contains(text(), 'Text to Video')]]"
         ],
         "settings_button": [
-            "//*[@id='__next']/div[2]/div[1]/div/div[2]/div/div[2]/div/div[1]/div[2]/button[2]",
-            "//button[contains(@aria-label, 'settings') or contains(@aria-label, 'Settings')]",
-            "//button[contains(text(), 'Settings') or contains(text(), 'settings')]",
-            "//*[contains(@class, 'settings')]//button"
+            "//button[contains(text(), 'Settings')]",
+            "button[aria-label*='settings']",
+            "//button[contains(@class, 'settings')]"
         ],
         "model_dropdown": [
-            "//*[@id='radix-:r9h:']/div/div[2]/button/span/i/font/font",
-            "//button[contains(@aria-label, 'model') or contains(@aria-label, 'Model')]",
-            "//button[.//span[contains(text(), 'Veo') or contains(text(), 'Quality') or contains(text(), 'Fast')]]",
-            "//*[contains(@class, 'model')]//button"
+            "//button[.//span[contains(text(), 'Veo')]]",
+            "button[aria-label*='model']",
+            "//button[contains(text(), 'Quality') or contains(text(), 'Fast')]"
         ],
         "count_dropdown": [
-            "//*[@id='radix-:r9h:']/div/div[1]/div/button/span/i/font/font",
-            "//button[contains(@aria-label, 'count') or contains(@aria-label, 'Count')]",
-            "//button[.//span[contains(text(), '1') or contains(text(), '2') or contains(text(), '3') or contains(text(), '4')]]",
-            "//*[contains(@class, 'count')]//button"
+            "//button[.//span[contains(text(), '1') or contains(text(), '2')]]",
+            "button[aria-label*='count']",
+            "//button[contains(@class, 'count')]"
         ],
         "prompt_textarea": [
-            "//*[@id='PINHOLE_TEXT_AREA_ELEMENT_ID']",
-            "//textarea[@placeholder]",
-            "//textarea[contains(@aria-label, 'prompt') or contains(@aria-label, 'Prompt')]",
-            "//div[contains(@class, 'textarea')]//textarea",
-            "//textarea"
+            "#PINHOLE_TEXT_AREA_ELEMENT_ID",
+            "textarea[placeholder]",
+            "//textarea[contains(@aria-label, 'prompt')]"
         ],
         "create_button": [
-            "//*[@id='__next']/div[2]/div[1]/div/div[2]/div/div[2]/div/div[2]/div[2]/button",
             "//button[contains(text(), 'Create') or contains(text(), 'Generate')]",
-            "//button[@aria-label='Create video' or @aria-label='Generate video']",
-            "//*[contains(@class, 'create')]//button",
-            "//button[contains(@class, 'primary') or contains(@class, 'submit')]"
+            "button[aria-label*='Create video']",
+            "//button[contains(@class, 'primary')]"
         ]
     }
     
