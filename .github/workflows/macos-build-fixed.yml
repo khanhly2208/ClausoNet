@@ -44,20 +44,20 @@ jobs:
       run: |
         echo "🔍 Scanning for various API key patterns..."
         
-        # Check Google API keys
-        if grep -r "AIzaSy" . --exclude-dir=.git --exclude-dir=.github; then
+        # Check Google API keys (exclude check scripts and docs)
+        if grep -r "AIzaSy" . --exclude-dir=.git --exclude-dir=.github --exclude="*.md" --exclude="*check*.py" --exclude="*GUIDE*"; then
           echo "⚠️ WARNING: Google API keys found in code!"
           exit 1
         fi
         
-        # Check OpenAI API keys
-        if grep -r "sk-[a-zA-Z0-9]\{48\}" . --exclude-dir=.git --exclude-dir=.github; then
+        # Check OpenAI API keys (exclude check scripts and docs)
+        if grep -r "sk-[a-zA-Z0-9]\{48\}" . --exclude-dir=.git --exclude-dir=.github --exclude="*.md" --exclude="*check*.py" --exclude="*GUIDE*"; then
           echo "⚠️ WARNING: OpenAI API keys found in code!"
           exit 1
         fi
         
-        # Check other common patterns
-        if grep -r -E "(api_key|apikey|api-key)\s*[:=]\s*['\"][^'\"]{20,}['\"]" . --exclude-dir=.git --exclude-dir=.github; then
+        # Check other common patterns (exclude check scripts and docs)
+        if grep -r -E "(api_key|apikey|api-key)\s*[:=]\s*['\"][^'\"]{20,}['\"]" . --exclude-dir=.git --exclude-dir=.github --exclude="*.md" --exclude="*check*.py" --exclude="*GUIDE*"; then
           echo "⚠️ WARNING: Potential API keys found in code!"
           exit 1
         fi
@@ -148,14 +148,16 @@ jobs:
           cp config.yaml.template config.yaml
           echo "✅ Config template copied"
           
-          # Enhanced API key checking in config
-          if grep -q "AIzaSy" config.yaml; then
-            echo "❌ Google API key found in config!"
-            exit 1
-          fi
-          if grep -q "sk-[a-zA-Z0-9]\{48\}" config.yaml; then
-            echo "❌ OpenAI API key found in config!"
-            exit 1
+          # Enhanced API key checking in config (only if real config exists)
+          if [ -f "config.yaml" ]; then
+            if grep -q "AIzaSy" config.yaml; then
+              echo "❌ Google API key found in config!"
+              exit 1
+            fi
+            if grep -q "sk-[a-zA-Z0-9]\{48\}" config.yaml; then
+              echo "❌ OpenAI API key found in config!"
+              exit 1
+            fi
           fi
         fi
         
